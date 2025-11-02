@@ -13,11 +13,8 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0; // Index Tab yang sedang aktif
-  final AuthService _authService = AuthService();
+  int _selectedIndex = 0;
 
-  // --- Daftar Layar untuk setiap Tab ---
-  // NANTI kita akan ganti ini dengan layar asli (Games, LBS, Profil)
   static const List<Widget> _widgetOptions = <Widget>[
     GamesTab(),
     VoucherTab(),
@@ -34,10 +31,8 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('PixelNomics')),
-      // Tampilkan layar sesuai index yang dipilih
       body: _widgetOptions.elementAt(_selectedIndex),
 
-      // --- Ini adalah Bottom Navigation Bar ---
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.gamepad), label: 'Games'),
@@ -55,7 +50,6 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 // --- Widget untuk Tab Profil ---
-// Kita pisah agar rapi. Ini adalah bagian dari Tab 3
 class ProfileTab extends StatefulWidget {
   const ProfileTab({Key? key}) : super(key: key);
 
@@ -66,8 +60,6 @@ class ProfileTab extends StatefulWidget {
 class _ProfileTabState extends State<ProfileTab> {
   final AuthService _authService = AuthService();
 
-  // Kita butuh FutureBuilder untuk mengambil username
-  // karena ini adalah operasi async (dari SharedPreferences)
   Widget _buildUsername() {
     return FutureBuilder<String?>(
       future: _authService.getUsername(), // Panggil fungsi getUsername

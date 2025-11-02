@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/game_model.dart';
 import '../services/api_service.dart';
-import '../services/auth_service.dart'; // <-- 1. IMPORT BARU
-import '../utils/database_helper.dart'; // <-- 2. IMPORT BARU
+import '../services/auth_service.dart';
+import '../utils/database_helper.dart';
 
 class GameDetailScreen extends StatefulWidget {
-  // <-- 3. UBAH JADI StatefulWidget
   final Game game;
 
   const GameDetailScreen({Key? key, required this.game}) : super(key: key);
@@ -17,32 +16,25 @@ class GameDetailScreen extends StatefulWidget {
 
 class _GameDetailScreenState extends State<GameDetailScreen> {
   final ApiService _apiService = ApiService();
-  final DatabaseHelper _dbHelper =
-      DatabaseHelper.instance; // <-- 4. TAMBAHKAN DB HELPER
-  final AuthService _authService =
-      AuthService(); // <-- 5. TAMBAHKAN AUTH SERVICE
+  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final AuthService _authService = AuthService();
 
   double? _convertedPrice;
   String? _errorMessage;
   Map<String, dynamic>? _rates;
-
-  // --- STATE BARU UNTUK WISHLIST ---
-  bool _isInWishlist = false; // Untuk melacak status wishlist
-  int? _currentUserId; // Untuk menyimpan ID user yang login
-  // ---------------------------------
+  bool _isInWishlist = false;
+  int? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    // Panggil SEMUA data yang kita butuhkan saat layar dibuka
     _loadAllData();
   }
 
+  //Ambil data + ID diperlukan untuk lihat wishlist
   void _loadAllData() async {
-    // 1. Ambil User ID
     _currentUserId = await _authService.getUserId();
 
-    // 2. Cek status wishlist (hanya jika user ID ada)
     if (_currentUserId != null) {
       bool status = await _dbHelper.isGameInWishlist(
         _currentUserId!,
@@ -53,13 +45,10 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
       });
     }
 
-    // 3. Panggil API (fungsi ini sudah ada sebelumnya)
     _fetchRatesAndConvert();
   }
 
   void _fetchRatesAndConvert() async {
-    // ... (Fungsi ini SAMA PERSIS seperti sebelumnya, tidak perlu diubah) ...
-    // ... (Biarkan apa adanya) ...
     setState(() {
       _errorMessage = null;
     });
@@ -109,8 +98,6 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
     });
   }
 
-  // ... (Biarkan fungsi _formatOriginalPrice, _formatConvertedPrice, _getConvertedTime) ...
-  // ... (SAMA PERSIS seperti sebelumnya) ...
   String _formatOriginalPrice() {
     final format = NumberFormat.currency(
       locale: 'en_US',

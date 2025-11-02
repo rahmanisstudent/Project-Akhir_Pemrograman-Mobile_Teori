@@ -19,35 +19,31 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'MurahIn',
+      title: 'PixelNomics',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        brightness: Brightness.light, // Tema gelap ala gamer
+        brightness: Brightness.light, //theme
       ),
-      home: _buildHomeScreen(), // Panggil fungsi untuk cek login
+      home: _buildHomeScreen(),
     );
   }
 
   Widget _buildHomeScreen() {
-    // Kita gunakan FutureBuilder untuk menunggu hasil pengecekan session
     return FutureBuilder<bool>(
-      // Panggil fungsi isLoggedIn() dari AuthService
-      future: _authService.isLoggedIn(),
+      future: _authService.isLoggedIn(), //authservice
       builder: (context, snapshot) {
-        // Saat sedang loading...
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        // Jika sudah ada data dan hasilnya 'true' (sudah login)
+        // login berhasil ada datanya
         if (snapshot.hasData && snapshot.data == true) {
           // Arahkan ke Layar Utama
           return MainScreen();
         }
 
-        // Jika tidak, arahkan ke Layar Login
         return LoginScreen();
       },
     );
