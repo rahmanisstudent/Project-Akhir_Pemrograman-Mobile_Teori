@@ -45,7 +45,8 @@ dependencies:
   geolocator: ^14.0.2
 
   #Notifikasi lokal
-  #flutter_local_notifications:
+  flutter_local_notifications: ^17.1.2
+  timezone: ^0.9.3
 
   #Manajemen session
   shared_preferences: ^2.5.3

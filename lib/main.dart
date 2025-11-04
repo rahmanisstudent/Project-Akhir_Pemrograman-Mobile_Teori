@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:pixelnomics_stable/screens/login_screen.dart'; // Sesuaikan 'pixelnomics' dengan nama proyekmu
-import 'package:pixelnomics_stable/screens/main_screen.dart'; // Sesuaikan 'pixelnomics' dengan nama proyekmu
-import 'package:pixelnomics_stable/services/auth_service.dart'; // Sesuaikan 'pixelnomics' dengan nama proyekmu
+import 'package:pixelnomics_stable/screens/login_screen.dart';
+import 'package:pixelnomics_stable/screens/main_screen.dart';
+import 'package:pixelnomics_stable/services/auth_service.dart';
+import 'package:pixelnomics_stable/services/notification_service.dart';
 
-void main() {
+void main() async {
   // Pastikan semua binding Flutter siap sebelum menjalankan logika
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi NotificationService
+  final NotificationService notificationService = NotificationService();
+  await notificationService.init();
+
   runApp(MyApp());
 }
 

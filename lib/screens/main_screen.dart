@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:pixelnomics_stable/screens/login_screen.dart'; // Sesuaikan nama proyek
-import 'package:pixelnomics_stable/services/auth_service.dart'; // Sesuaikan nama proyek
+import 'package:pixelnomics_stable/screens/login_screen.dart';
+import 'package:pixelnomics_stable/services/auth_service.dart';
+import 'package:pixelnomics_stable/services/notification_service.dart';
 import 'games_tab.dart';
 import 'feedback_screen.dart';
-import 'login_screen.dart';
 import 'wishlist_screen.dart';
 import 'voucher_tab.dart';
 
@@ -142,6 +142,17 @@ class _ProfileTabState extends State<ProfileTab> {
               );
             },
             child: Text('Logout'),
+          ),
+
+          SizedBox(height: 20),
+
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+            onPressed: () {
+              // Panggil fungsi tes notifikasi
+              NotificationService().showTestNotification();
+            },
+            child: Text('Tes Notifikasi (Demo)'),
           ),
         ],
       ),
