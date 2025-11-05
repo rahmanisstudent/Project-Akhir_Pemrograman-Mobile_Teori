@@ -7,18 +7,28 @@ import '../models/game_model.dart';
 class DatabaseHelper {
   // Nama database dan versi
   static const _databaseName = "PixelNomics_v2.db";
-  static const _databaseVersion = 4; //ini soalnya perombakan skema DB
+  static const _databaseVersion = 7; //ini soalnya perombakan skema DB
 
   // Nama tabel kita
   static const tableUsers = 'users';
   static const tableGames = 'games';
   static const tableWishlist = 'wishlist';
-  static const tableFeedback = 'feedback';
+  static const tableComments = 'comments';
+
+  //nama kolom di user
   static const tableUsersColUsername = 'username';
   static const tableUsersColPassword = 'password';
   static const tableUsersColRole = 'role';
-  static const tableFeedbackColUserId = 'user_id';
-  static const tableFeedbackColFeedback = 'kesan_pesan';
+  static const tableUsersColFullName = 'full_name';
+  static const tableUsersColPicturePath = 'picture_path';
+
+  //nama kolom di comments
+  static const tableCommentsColUserId = 'user_id';
+  static const tableCommentsColComment = 'comment_text';
+  static const tableCommentsColGameDealID = 'game_dealID';
+  static const tableCommentsColTimestamp = 'timestamp';
+
+  //nama kolom di wishlist
   static const tableWishlistColUserId = 'user_id';
   static const tableWishlistColGameDealID = 'game_dealID';
 
@@ -55,7 +65,9 @@ class DatabaseHelper {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT NOT NULL UNIQUE,
           password TEXT NOT NULL,
-          role TEXT DEFAULT 'user'
+          role TEXT DEFAULT 'user',
+          full_name TEXT,
+          picture_path TEXT
         )
         ''');
 
@@ -83,13 +95,16 @@ class DatabaseHelper {
         )
         ''');
 
-    // 4. Tabel Feedback (Gunakan 'IF NOT EXISTS')
+    // 4. Tabel Comment (Gunakan 'IF NOT EXISTS')
     await db.execute('''
-        CREATE TABLE IF NOT EXISTS $tableFeedback (
+        CREATE TABLE IF NOT EXISTS $tableComments (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id INTEGER NOT NULL,
-          kesan_pesan TEXT NOT NULL,
-          FOREIGN KEY (user_id) REFERENCES $tableUsers (id)
+          $tableCommentsColUserId INTEGER NOT NULL,
+          $tableCommentsColGameDealID TEXT NOT NULL,
+          $tableCommentsColComment TEXT NOT NULL,
+          $tableCommentsColTimestamp TEXT,
+        FOREIGN KEY ($tableCommentsColUserId) REFERENCES $tableUsers (id),
+        FOREIGN KEY ($tableCommentsColGameDealID) REFERENCES $tableGames (dealID)
         )
         ''');
   }
@@ -106,13 +121,46 @@ class DatabaseHelper {
     }
 
     if (oldVersion < 4) {
-      // Tambahkan kolom 'role' ke tabel 'users'
       try {
         await db.execute(
           'ALTER TABLE $tableUsers ADD COLUMN role TEXT DEFAULT "user"',
         );
       } catch (e) {
         print("Gagal alter table (mungkin kolom sudah ada): $e");
+      }
+    }
+    // --- TAMBAHKAN LOGIKA BARU INI ---
+    if (oldVersion < 5) {
+      try {
+        await db.execute(
+          'ALTER TABLE $tableUsers ADD COLUMN $tableUsersColFullName TEXT',
+        );
+        await db.execute(
+          'ALTER TABLE $tableUsers ADD COLUMN $tableUsersColPicturePath TEXT',
+        );
+      } catch (e) {
+        print("Gagal alter table v5: $e");
+      }
+    }
+
+    if (oldVersion < 6) {
+      try {
+        // Hapus tabel feedback lama yang sudah tidak berguna
+        await db.execute('DROP TABLE IF EXISTS feedback');
+        // Buat tabel comments baru (kita panggil _onCreate)
+      } catch (e) {
+        print("Gagal drop table v6: $e");
+      }
+    }
+
+    if (oldVersion < 7) {
+      try {
+        // Tambahkan kolom 'timestamp' ke tabel 'comments'
+        await db.execute(
+          'ALTER TABLE $tableComments ADD COLUMN $tableCommentsColTimestamp TEXT',
+        );
+      } catch (e) {
+        print("Gagal alter table v7: $e");
       }
     }
 
@@ -134,11 +182,33 @@ class DatabaseHelper {
     });
   }
 
-  Future<int> addFeedback(String feedbackText, int userId) async {
+  Future<List<Map<String, dynamic>>> getCommentsForGame(String dealID) async {
     final db = await instance.database;
-    return await db.insert(tableFeedback, {
-      'user_id': userId,
-      'kesan_pesan': feedbackText,
+    return await db.rawQuery(
+      '''
+    SELECT 
+      c.$tableCommentsColComment,
+      c.$tableCommentsColTimestamp,
+      u.$tableUsersColFullName,
+      u.$tableUsersColPicturePath
+    FROM $tableComments c
+    JOIN $tableUsers u ON c.$tableCommentsColUserId = u.id
+    WHERE c.$tableCommentsColGameDealID = ?
+    ORDER BY c.id DESC
+  ''',
+      [dealID],
+    );
+  }
+
+  // Fungsi untuk menambah komentar baru
+  Future<int> addComment(int userId, String dealID, String comment) async {
+    final db = await instance.database;
+    String timestamp = DateTime.now().toUtc().toIso8601String();
+    return await db.insert(tableComments, {
+      tableCommentsColUserId: userId,
+      tableCommentsColGameDealID: dealID,
+      tableCommentsColComment: comment,
+      tableCommentsColTimestamp: timestamp,
     });
   }
 
@@ -188,6 +258,27 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return Game.fromMap(maps[i]);
     });
+  }
+
+  Future<Map<String, dynamic>?> getUserData(int userId) async {
+    final db = await instance.database;
+    var res = await db.query(tableUsers, where: 'id = ?', whereArgs: [userId]);
+    return res.isNotEmpty ? res.first : null;
+  }
+
+  // Meng-update data user
+  Future<int> updateUserData(
+    int userId,
+    String fullName,
+    String picturePath,
+  ) async {
+    final db = await instance.database;
+    return await db.update(
+      tableUsers,
+      {tableUsersColFullName: fullName, tableUsersColPicturePath: picturePath},
+      where: 'id = ?',
+      whereArgs: [userId],
+    );
   }
 
   Future<void> cacheGames(List<Game> games) async {
