@@ -1,3 +1,4 @@
+// Di file: lib/services/auth_service.dart
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // Untuk Session
@@ -9,42 +10,38 @@ class AuthService {
   // --- Fungsi Enkripsi (Hashing) ---
   String _hashPassword(String password) {
     var bytes = utf8.encode(password);
-    var digest = sha256.convert(bytes); //hashing menggunakan algoritma SHA-256
+    var digest = sha256.convert(bytes);
     return digest.toString();
   }
 
   // --- 1. Fungsi Register ---
+  // (Fungsi ini tidak berubah, kita asumsikan 'role' default 'user'
+  //  sudah diatur oleh database saat 'CREATE TABLE')
   Future<bool> register(String username, String password) async {
     try {
       final db = await _dbHelper.database;
-
-      // di lempar ke _hasPassword tuk di enkripsi
       String hashedPassword = _hashPassword(password);
-
       Map<String, dynamic> row = {
         DatabaseHelper.tableUsersColUsername: username,
         DatabaseHelper.tableUsersColPassword: hashedPassword,
+        // Kita tidak perlu mengirim 'role', karena DB v4 kita
+        // punya 'DEFAULT "user"'
       };
-
       await db.insert(DatabaseHelper.tableUsers, row);
-
       return true;
-      // Error handling
     } catch (e) {
-      print(
-        "Error_register: $e",
-      ); //kemungkinan usn-nya sama, disetting sengaja UNIQUE
+      print("Error_register: $e");
       return false;
     }
   }
 
-  // --- 2. Fungsi Login ---
+  // --- 2. Fungsi Login (ADA PERUBAHAN) ---
   Future<bool> login(String username, String password) async {
     final db = await _dbHelper.database;
-
-    // dienkripsi juga karena di db disimpan dalam enkripsi
     String hashedPassword = _hashPassword(password);
 
+    // Query kita tidak perlu diubah, karena 'db.query'
+    // otomatis mengambil SEMUA kolom (*), termasuk 'role'.
     List<Map> result = await db.query(
       DatabaseHelper.tableUsers,
       where:
@@ -52,13 +49,22 @@ class AuthService {
       whereArgs: [username, hashedPassword],
     );
 
-    // Cek hasil dari matching di atas
     if (result.isNotEmpty) {
-      // Login aktif, disimpan ke sessions
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('username', username);
+      await prefs.setString(
+        'username',
+        result.first[DatabaseHelper.tableUsersColUsername],
+      );
       await prefs.setInt('user_id', result.first['id']);
+
+      // --- PERUBAHAN 1: SIMPAN ROLE KE SESSION ---
+      // Kita ambil data 'role' dari database dan simpan ke session
+      await prefs.setString(
+        'role',
+        result.first[DatabaseHelper.tableUsersColRole],
+      );
+      // ------------------------------------------
 
       return true;
     } else {
@@ -66,20 +72,20 @@ class AuthService {
     }
   }
 
-  // --- 3. Fungsi Cek Session ---
+  // --- 3. Fungsi Cek Session (Tidak berubah) ---
   Future<bool> isLoggedIn() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getBool('isLoggedIn') ?? false;
   }
 
-  // --- 4. Fungsi Logout ---
+  // --- 4. Fungsi Logout (Tidak berubah) ---
+  // 'prefs.clear()' otomatis menghapus 'role'
   Future<void> logout() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    // Hapus semua data session
     await prefs.clear();
   }
 
-  // --- Helper (Opsional tapi bagus) ---
+  // --- 5. Helper (Satu fungsi BARU) ---
   Future<String?> getUsername() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString('username');
@@ -89,4 +95,13 @@ class AuthService {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getInt('user_id');
   }
+
+  // --- PERUBAHAN 2: FUNGSI BARU UNTUK GET ROLE ---
+  Future<String?> getRole() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    // Ambil 'role' dari session, jika tidak ada, default-nya 'user'
+    return prefs.getString('role') ?? 'user';
+  }
+
+  // --------------------------------------------
 }

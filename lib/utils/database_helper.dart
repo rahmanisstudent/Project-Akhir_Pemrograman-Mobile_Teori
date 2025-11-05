@@ -7,7 +7,7 @@ import '../models/game_model.dart';
 class DatabaseHelper {
   // Nama database dan versi
   static const _databaseName = "PixelNomics_v2.db";
-  static const _databaseVersion = 3; //ini soalnya perombakan skema DB
+  static const _databaseVersion = 4; //ini soalnya perombakan skema DB
 
   // Nama tabel kita
   static const tableUsers = 'users';
@@ -16,6 +16,7 @@ class DatabaseHelper {
   static const tableFeedback = 'feedback';
   static const tableUsersColUsername = 'username';
   static const tableUsersColPassword = 'password';
+  static const tableUsersColRole = 'role';
   static const tableFeedbackColUserId = 'user_id';
   static const tableFeedbackColFeedback = 'kesan_pesan';
   static const tableWishlistColUserId = 'user_id';
@@ -53,7 +54,8 @@ class DatabaseHelper {
         CREATE TABLE IF NOT EXISTS $tableUsers (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL
+          password TEXT NOT NULL,
+          role TEXT DEFAULT 'user'
         )
         ''');
 
@@ -103,6 +105,17 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS $tableWishlist');
     }
 
+    if (oldVersion < 4) {
+      // Tambahkan kolom 'role' ke tabel 'users'
+      try {
+        await db.execute(
+          'ALTER TABLE $tableUsers ADD COLUMN role TEXT DEFAULT "user"',
+        );
+      } catch (e) {
+        print("Gagal alter table (mungkin kolom sudah ada): $e");
+      }
+    }
+
     // Panggil _onCreate lagi untuk membuat ulang tabel yang hilang
     await _onCreate(db, newVersion);
   }
@@ -113,7 +126,7 @@ class DatabaseHelper {
 
     final List<Map<String, dynamic>> maps = await db.query(
       tableGames,
-      orderBy: 'name ASC',
+      orderBy: 'title ASC',
     );
 
     return List.generate(maps.length, (i) {
@@ -175,5 +188,25 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return Game.fromMap(maps[i]);
     });
+  }
+
+  Future<void> cacheGames(List<Game> games) async {
+    final db = await instance.database;
+
+    // Kita gunakan 'batch' agar prosesnya cepat (ribuan data sekaligus)
+    var batch = db.batch();
+
+    // 1. Hapus semua data lama dari tabel games
+    batch.delete(tableGames);
+
+    // 2. Masukkan semua game baru dari API
+    for (var game in games) {
+      // 'toMap' adalah fungsi yang kita buat di game_model.dart
+      batch.insert(tableGames, game.toMap());
+    }
+
+    // 3. Jalankan semua perintah sekaligus
+    await batch.commit(noResult: true);
+    print("Database game telah di-sync dengan data API.");
   }
 }

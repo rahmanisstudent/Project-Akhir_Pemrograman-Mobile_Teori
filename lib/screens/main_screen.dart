@@ -6,6 +6,8 @@ import 'games_tab.dart';
 import 'feedback_screen.dart';
 import 'wishlist_screen.dart';
 import 'voucher_tab.dart';
+import 'package:pixelnomics_stable/services/api_service.dart';
+import 'package:pixelnomics_stable/utils/database_helper.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -60,6 +62,10 @@ class ProfileTab extends StatefulWidget {
 class _ProfileTabState extends State<ProfileTab> {
   final AuthService _authService = AuthService();
 
+  final ApiService _apiService = ApiService();
+  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  bool _isSyncing = false;
+
   Widget _buildUsername() {
     return FutureBuilder<String?>(
       future: _authService.getUsername(), // Panggil fungsi getUsername
@@ -89,73 +95,151 @@ class _ProfileTabState extends State<ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. Tampilkan Username
-          _buildUsername(),
+    return FutureBuilder<String?>(
+      // 1. KITA CEK ROLE DULU
+      future: _authService.getRole(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          // Tampilkan loading saat cek role
+          return Center(child: CircularProgressIndicator());
+        }
 
-          SizedBox(height: 30),
+        // Tentukan apakah user ini admin
+        final bool isAdmin = (snapshot.data == 'admin');
 
-          ElevatedButton.icon(
-            icon: Icon(Icons.favorite),
-            label: Text('Lihat Wishlist Saya'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.pinkAccent, // Biar beda
-            ),
-            onPressed: () {
-              // Pindah ke layar Wishlist
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => WishlistScreen()),
-              );
-            },
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1. Tampilkan Username (fungsi ini sudah ada)
+              _buildUsername(),
+
+              SizedBox(height: 30),
+
+              // 2. Tombol Wishlist (sudah ada)
+              ElevatedButton.icon(
+                icon: Icon(Icons.favorite),
+                label: Text('Lihat Wishlist Saya'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.pinkAccent,
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => WishlistScreen()),
+                  );
+                },
+              ),
+              SizedBox(height: 10),
+
+              // 3. Tombol Kesan Pesan (sudah ada)
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => FeedbackScreen()),
+                  );
+                },
+                child: Text('Kirim Kesan & Pesan'),
+              ),
+
+              SizedBox(height: 10),
+
+              // 4. Tombol Logout (sudah ada)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () async {
+                  await _authService.logout();
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => LoginScreen()),
+                    (route) => false,
+                  );
+                },
+                child: Text('Logout'),
+              ),
+
+              SizedBox(height: 20),
+
+              // 5. Tombol Tes Notifikasi (sudah ada)
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                onPressed: () {
+                  NotificationService().showTestNotification();
+                },
+                child: Text('Tes Notifikasi (Demo)'),
+              ),
+
+              // --- 6. TOMBOL ADMIN BARU (INTI DARI Visi #2) ---
+              // Gunakan Visibility untuk menampilkan tombol hanya jika admin
+              Visibility(
+                visible: isAdmin, // HANYA TAMPIL JIKA ADMIN
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 20.0),
+                  child: ElevatedButton.icon(
+                    icon: Icon(Icons.sync),
+                    label: _isSyncing
+                        ? Text('Sinkronisasi...')
+                        : Text('Sync Data Game (Admin)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                    ),
+                    // Nonaktifkan tombol saat sedang loading
+                    onPressed: _isSyncing
+                        ? null
+                        : () async {
+                            setState(() {
+                              _isSyncing = true; // Mulai loading
+                            });
+
+                            // Tampilkan snackbar BUKAN di context ini
+                            final scaffoldMessenger = ScaffoldMessenger.of(
+                              context,
+                            );
+
+                            try {
+                              // 1. Panggil API
+                              final games = await _apiService.getGameDeals();
+
+                              // 2. Simpan ke DB
+                              if (games.isNotEmpty) {
+                                await _dbHelper.cacheGames(games);
+                                scaffoldMessenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Sinkronisasi ${games.length} game berhasil!',
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                scaffoldMessenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Gagal mengambil data dari API.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              scaffoldMessenger.showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+
+                            setState(() {
+                              _isSyncing = false; // Selesai loading
+                            });
+                          },
+                  ),
+                ),
+              ),
+              // ------------------------------------------------
+            ],
           ),
-
-          SizedBox(height: 10),
-          // 2. Tombol Kirim Kesan & Pesan
-          ElevatedButton(
-            onPressed: () {
-              // Pindah ke layar Feedback
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => FeedbackScreen()),
-              );
-            },
-            child: Text('Kirim Kesan & Pesan'),
-          ),
-
-          SizedBox(height: 10),
-
-          // 3. Tombol Logout (masih sama)
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              await _authService.logout();
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => LoginScreen()),
-                (route) => false,
-              );
-            },
-            child: Text('Logout'),
-          ),
-
-          SizedBox(height: 20),
-
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-            onPressed: () {
-              // Panggil fungsi tes notifikasi
-              NotificationService().showTestNotification();
-            },
-            child: Text('Tes Notifikasi (Demo)'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
