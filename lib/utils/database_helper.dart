@@ -7,7 +7,7 @@ import '../models/game_model.dart';
 class DatabaseHelper {
   // Nama database dan versi
   static const _databaseName = "PixelNomics_v2.db";
-  static const _databaseVersion = 1;
+  static const _databaseVersion = 3; //ini soalnya perombakan skema DB
 
   // Nama tabel kita
   static const tableUsers = 'users';
@@ -19,7 +19,7 @@ class DatabaseHelper {
   static const tableFeedbackColUserId = 'user_id';
   static const tableFeedbackColFeedback = 'kesan_pesan';
   static const tableWishlistColUserId = 'user_id';
-  static const tableWishlistColGameId = 'game_id';
+  static const tableWishlistColGameDealID = 'game_dealID';
 
   //singleton
   DatabaseHelper._privateConstructor();
@@ -42,90 +42,69 @@ class DatabaseHelper {
     return await openDatabase(
       path,
       version: _databaseVersion,
-      onCreate: _onCreate, //cuman dipanggil pas pertama kali buat
+      onCreate: _onCreate, // pas buat
+      onUpgrade: _onUpgrade,
     );
   }
 
   Future _onCreate(Database db, int version) async {
+    // 1. Tabel Users (Gunakan 'IF NOT EXISTS')
     await db.execute('''
-          CREATE TABLE $tableUsers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL 
-          )
-          ''');
+        CREATE TABLE IF NOT EXISTS $tableUsers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL
+        )
+        ''');
 
+    // 2. Tabel Games (Gunakan 'IF NOT EXISTS')
     await db.execute('''
-          CREATE TABLE $tableGames (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            store TEXT NOT NULL,
-            price REAL NOT NULL,
-            currency_code TEXT NOT NULL,
-            image_url TEXT,
-            time_zone_offset INTEGER NOT NULL
-          )
-          ''');
+        CREATE TABLE IF NOT EXISTS $tableGames (
+          id INTEGER PRIMARY KEY AUTOINCREMENT, 
+          dealID TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          storeID TEXT,
+          salePrice REAL NOT NULL,
+          normalPrice REAL NOT NULL,
+          thumb TEXT
+        )
+        ''');
 
+    // 3. PERBAIKI STRUKTUR 'wishlist' (INI YANG BARU)
     await db.execute('''
-          CREATE TABLE $tableWishlist (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            game_id INTEGER NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES $tableUsers (id),
-            FOREIGN KEY (game_id) REFERENCES $tableGames (id)
-          )
-          ''');
+        CREATE TABLE IF NOT EXISTS $tableWishlist (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          game_dealID TEXT NOT NULL,  -- <-- UBAH DARI game_id MENJADI game_dealID
+          FOREIGN KEY (user_id) REFERENCES $tableUsers (id),
+          FOREIGN KEY (game_dealID) REFERENCES $tableGames (dealID) -- <-- SAMBUNGKAN KE dealID
+        )
+        ''');
 
+    // 4. Tabel Feedback (Gunakan 'IF NOT EXISTS')
     await db.execute('''
-          CREATE TABLE $tableFeedback (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            kesan_pesan TEXT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES $tableUsers (id)
-          )
-          ''');
-
-    await _prepopulateGames(db);
+        CREATE TABLE IF NOT EXISTS $tableFeedback (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          kesan_pesan TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES $tableUsers (id)
+        )
+        ''');
   }
 
-  // dummy data hehe
-  Future _prepopulateGames(Database db) async {
-    await db.rawInsert('''
-      INSERT INTO $tableGames(name, store, price, currency_code, image_url, time_zone_offset)
-      VALUES(
-        'Elden Ring: Shadow of the Erdtree',
-        'Steam',
-        39.99,
-        'USD',
-        'https://image.api.playstation.com/vulcan/ap/rnd/202402/2021/4f2a714659f8139e1a38f32c3f1de8f828a2b53b81102047.png',
-        -4 
-      )
-    ''');
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    // Jika upgrade dari v1 (database dummy lama)
+    if (oldVersion < 2) {
+      await db.execute('DROP TABLE IF EXISTS $tableGames');
+      await db.execute('DROP TABLE IF EXISTS $tableWishlist');
+    }
+    // Jika upgrade dari v2 (struktur wishlist lama)
+    if (oldVersion < 3) {
+      await db.execute('DROP TABLE IF EXISTS $tableWishlist');
+    }
 
-    await db.rawInsert('''
-      INSERT INTO $tableGames(name, store, price, currency_code, image_url, time_zone_offset)
-      VALUES(
-        'Genshin Impact - 60 Crystals',
-        'In-Game Store',
-        16000.0,
-        'IDR',
-        'https://upload.wikimedia.org/wikipedia/en/thumb/5/5d/Genshin_Impact_logo.svg/1200px-Genshin_Impact_logo.svg.png',
-        8
-      )
-    ''');
-
-    await db.rawInsert('''
-      INSERT INTO $tableGames(name, store, price, currency_code, image_url, time_zone_offset)
-      VALUES(
-        'Final Fantasy VII Rebirth',
-        'PSN Store (Japan)',
-        9800.0,
-        'JPY',
-        'https://image.api.playstation.com/vulcan/ap/rnd/202309/1321/e4f73b84f27f060b2d65017b2b0a9f8f26639a039d6d8498.png',
-        9
-      )
-    ''');
+    // Panggil _onCreate lagi untuk membuat ulang tabel yang hilang
+    await _onCreate(db, newVersion);
   }
 
   // tarik data games
@@ -151,31 +130,31 @@ class DatabaseHelper {
   }
 
   // 1. Fungsi untuk MENAMBAH game ke wishlist
-  Future<int> addToWishlist(int userId, int gameId) async {
+  Future<int> addToWishlist(int userId, String dealID) async {
     final db = await instance.database;
     return await db.insert(tableWishlist, {
       tableWishlistColUserId: userId,
-      tableWishlistColGameId: gameId,
+      tableWishlistColGameDealID: dealID,
     });
   }
 
   // 2. Fungsi untuk MENGHAPUS game dari wishlist
-  Future<int> removeFromWishlist(int userId, int gameId) async {
+  Future<int> removeFromWishlist(int userId, String dealID) async {
     final db = await instance.database;
     return await db.delete(
       tableWishlist,
-      where: '$tableWishlistColUserId = ? AND $tableWishlistColGameId = ?',
-      whereArgs: [userId, gameId],
+      where: '$tableWishlistColUserId = ? AND $tableWishlistColGameDealID = ?',
+      whereArgs: [userId, dealID],
     );
   }
 
   // 3. Fungsi untuk MENGECEK apakah game sudah ada di wishlist
-  Future<bool> isGameInWishlist(int userId, int gameId) async {
+  Future<bool> isGameInWishlist(int userId, String dealID) async {
     final db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
       tableWishlist,
-      where: '$tableWishlistColUserId = ? AND $tableWishlistColGameId = ?',
-      whereArgs: [userId, gameId],
+      where: '$tableWishlistColUserId = ? AND $tableWishlistColGameDealID = ?',
+      whereArgs: [userId, dealID],
     );
     return maps.isNotEmpty;
   }
@@ -187,7 +166,7 @@ class DatabaseHelper {
     final List<Map<String, dynamic>> maps = await db.rawQuery(
       '''
     SELECT g.* FROM $tableGames g
-    JOIN $tableWishlist w ON g.id = w.$tableWishlistColGameId
+    JOIN $tableWishlist w ON g.id = w.$tableWishlistColGameDealID
     WHERE w.$tableWishlistColUserId = ?
   ''',
       [userId],

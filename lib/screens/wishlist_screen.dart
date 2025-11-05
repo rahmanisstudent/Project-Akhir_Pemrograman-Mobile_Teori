@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Untuk format Rupiah
+import 'package:intl/intl.dart';
 import '../models/game_model.dart';
-import '../services/api_service.dart'; // <- Butuh API
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../utils/database_helper.dart';
 import 'game_detail_screen.dart';
@@ -16,54 +16,49 @@ class WishlistScreen extends StatefulWidget {
 class _WishlistScreenState extends State<WishlistScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   final AuthService _authService = AuthService();
-  final ApiService _apiService = ApiService(); // <-- 1. Tambahkan API Service
+  final ApiService _apiService = ApiService();
 
-  // Kita akan menunggu 'List' dari 2 data:
-  // data[0] akan berisi List<Game> (dari DB)
-  // data[1] akan berisi Map<String, dynamic> (dari API)
   late Future<List<dynamic>> _dataFuture;
 
   @override
   void initState() {
     super.initState();
+    // Inisialisasi _dataFuture dengan Future kosong
+    _dataFuture = Future.value([]);
     _loadData();
   }
 
   void _loadData() async {
-    // Ambil user ID
     final userId = await _authService.getUserId();
     if (userId != null) {
       setState(() {
-        // 2. Gunakan Future.wait untuk menunggu 2 data sekaligus
         _dataFuture = Future.wait([
-          _dbHelper.getMyWishlist(userId), // Future 1: Ambil data DB
-          _apiService.getRates(), // Future 2: Ambil data API
+          _dbHelper.getMyWishlist(
+            userId,
+          ), // Memanggil fungsi DB yang sudah benar
+          _apiService.getRates(), // Memanggil API Kurs
         ]);
       });
     }
   }
 
-  // --- 3. FUNGSI BARU UNTUK KALKULASI TOTAL ---
+  // --- 3. PERBAIKI FUNGSI KALKULASI TOTAL ---
+  // Logika ini jadi jauh lebih sederhana karena semua harga game sekarang dalam USD
   double _calculateTotal(List<Game> games, Map<String, dynamic>? rates) {
-    if (rates == null) return 0.0; // Gagal dapat API
+    // Cek jika API kurs gagal atau tidak ada data IDR
+    if (rates == null || !rates.containsKey('IDR')) return 0.0;
 
     double totalIdr = 0.0;
     double idrRate = rates['IDR'].toDouble();
 
     for (var game in games) {
-      if (game.currencyCode == 'IDR') {
-        totalIdr += game.price;
-      } else if (rates.containsKey(game.currencyCode)) {
-        double gameRate = rates[game.currencyCode].toDouble();
-        // Konversi harga game ke USD dulu, baru ke IDR
-        double priceInUsd = game.price / gameRate;
-        totalIdr += priceInUsd * idrRate;
-      }
+      // Kita jumlahkan HARGA DISKON (salePrice) untuk total wishlist
+      totalIdr += game.salePrice * idrRate;
     }
     return totalIdr;
   }
 
-  // --- 4. FUNGSI BARU UNTUK FORMAT TOTAL ---
+  // (Fungsi format total ini sudah benar, tidak perlu diubah)
   String _formatTotal(double total) {
     final format = NumberFormat.currency(
       locale: 'id_ID',
@@ -77,7 +72,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Wishlist Saya')),
-      // 5. Ubah FutureBuilder
       body: FutureBuilder<List<dynamic>>(
         future: _dataFuture,
         builder: (context, snapshot) {
@@ -89,7 +83,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
 
-          // --- 6. Ambil data dari hasil Future.wait ---
           final List<Game> wishlistGames = snapshot.data![0];
           final Map<String, dynamic>? rates = snapshot.data![1];
 
@@ -97,13 +90,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
             return Center(child: Text("Wishlist kamu masih kosong."));
           }
 
-          // --- 7. Hitung totalnya ---
           final double totalCost = _calculateTotal(wishlistGames, rates);
 
-          // --- 8. Tampilkan UI-nya ---
           return Column(
             children: [
-              // --- KARTU TOTAL ---
+              // --- KARTU TOTAL (Sudah Benar) ---
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
@@ -113,6 +104,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   borderRadius: BorderRadius.circular(12.0),
                 ),
                 child: Column(
+                  // ... (UI Total Cost tidak berubah) ...
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -131,16 +123,17 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 ),
               ),
 
-              // --- LISTVIEW ---
+              // --- 4. PERBAIKI LISTVIEW ---
               Expanded(
                 child: ListView.builder(
                   itemCount: wishlistGames.length,
                   itemBuilder: (context, index) {
                     final game = wishlistGames[index];
                     return ListTile(
-                      leading: game.imageUrl != null
+                      // Gunakan 'thumb'
+                      leading: game.thumb != null
                           ? Image.network(
-                              game.imageUrl!,
+                              game.thumb!,
                               width: 50,
                               height: 50,
                               fit: BoxFit.cover,
@@ -148,15 +141,21 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                   Icon(Icons.gamepad),
                             )
                           : Icon(Icons.gamepad),
-                      title: Text(game.name),
-                      subtitle: Text(game.store),
+                      // Gunakan 'title'
+                      title: Text(game.title),
+                      // Tampilkan harga diskon individu
+                      subtitle: Text(
+                        "Diskon: Rp ${_formatTotal(game.salePrice * (rates?['IDR'] ?? 0.0))}",
+                        style: TextStyle(color: Colors.greenAccent),
+                      ),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => GameDetailScreen(game: game),
                           ),
-                        ).then((_) => _loadData()); // Refresh saat kembali
+                          // Refresh halaman ini saat kita kembali
+                        ).then((_) => _loadData());
                       },
                     );
                   },
