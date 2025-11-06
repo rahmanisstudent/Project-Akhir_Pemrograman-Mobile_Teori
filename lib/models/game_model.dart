@@ -55,4 +55,20 @@ class Game {
       'thumb': thumb,
     };
   }
+
+  String get category {
+    String lowerTitle = title.toLowerCase();
+    if (lowerTitle.contains('dlc') ||
+        lowerTitle.contains('pass') ||
+        lowerTitle.contains('expansion')) {
+      return 'DLC / Expansion';
+    }
+    if (lowerTitle.contains('coins') ||
+        lowerTitle.contains('crystals') ||
+        lowerTitle.contains('pack') ||
+        lowerTitle.contains('currency')) {
+      return 'In-Game Currency';
+    }
+    return 'Full Game';
+  }
 }

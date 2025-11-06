@@ -8,6 +8,7 @@ import 'voucher_tab.dart';
 import 'package:pixelnomics_stable/services/api_service.dart';
 import 'package:pixelnomics_stable/utils/database_helper.dart';
 import 'edit_profile_screen.dart';
+import 'package:pixelnomics_stable/utils/app_theme.dart';
 
 class MainScreen extends StatefulWidget {
   @override
@@ -208,7 +209,8 @@ class _ProfileTabState extends State<ProfileTab> {
                 icon: Icon(Icons.favorite),
                 label: Text('Lihat Wishlist Saya'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.pinkAccent,
+                  backgroundColor: Theme.of(context).colorScheme.onError,
+                  foregroundColor: Theme.of(context).colorScheme.error,
                 ),
                 onPressed: () {
                   Navigator.push(
@@ -221,7 +223,11 @@ class _ProfileTabState extends State<ProfileTab> {
 
               // 6. Tombol Logout
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kCardColor,
+                  foregroundColor: kErrorColor,
+                  side: BorderSide(color: kErrorColor),
+                ),
                 onPressed: () async {
                   await _authService.logout();
                   Navigator.pushAndRemoveUntil(
@@ -236,7 +242,6 @@ class _ProfileTabState extends State<ProfileTab> {
 
               // 7. Tombol Tes Notifikasi
               ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
                 onPressed: () {
                   NotificationService().showTestNotification();
                 },
@@ -253,9 +258,6 @@ class _ProfileTabState extends State<ProfileTab> {
                     label: _isSyncing
                         ? Text('Sinkronisasi...')
                         : Text('Sync Data Game (Admin)'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
-                    ),
                     onPressed: _isSyncing ? null : _syncData,
                   ),
                 ),

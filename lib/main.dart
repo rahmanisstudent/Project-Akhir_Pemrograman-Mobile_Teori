@@ -3,6 +3,7 @@ import 'package:pixelnomics_stable/screens/login_screen.dart';
 import 'package:pixelnomics_stable/screens/main_screen.dart';
 import 'package:pixelnomics_stable/services/auth_service.dart';
 import 'package:pixelnomics_stable/services/notification_service.dart';
+import 'package:pixelnomics_stable/utils/app_theme.dart';
 
 void main() async {
   // Pastikan semua binding Flutter siap sebelum menjalankan logika
@@ -26,10 +27,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'PixelNomics',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        brightness: Brightness.light, //theme
-      ),
+      theme: AppTheme.darkTheme,
       home: _buildHomeScreen(),
     );
   }

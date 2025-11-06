@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Kita butuh NumberFormat
+import 'package:intl/intl.dart';
 import '../models/game_model.dart';
 import '../utils/database_helper.dart';
 import 'game_detail_screen.dart';
@@ -19,7 +19,15 @@ class _GamesTabState extends State<GamesTab> {
 
   final TextEditingController _searchController = TextEditingController();
 
-  // Format harga (misal: 29.99) -> "$29.99"
+  // --- STATE BARU UNTUK FILTER ---
+  final List<String> _categories = [
+    'Full Game',
+    'DLC / Expansion',
+    'In-Game Currency',
+  ];
+  String? _selectedCategory; // Kategori yang sedang dipilih
+  // ------------------------------
+
   final _priceFormat = NumberFormat.currency(locale: 'en_US', symbol: "\$");
 
   @override
@@ -29,7 +37,6 @@ class _GamesTabState extends State<GamesTab> {
     _searchController.addListener(_filterGames);
   }
 
-  // Penting: Panggil ini untuk me-refresh data setelah Admin Sync
   void _loadGames() async {
     final games = await _dbHelper.getAllGames();
     setState(() {
@@ -38,15 +45,23 @@ class _GamesTabState extends State<GamesTab> {
     });
   }
 
+  // --- PERBARUI FUNGSI FILTER ---
   void _filterGames() {
     String query = _searchController.text.toLowerCase();
     setState(() {
       _filteredGames = _allGames.where((game) {
-        // GANTI 'game.name' menjadi 'game.title'
-        return game.title.toLowerCase().contains(query);
+        // Cek 1: Apakah judulnya cocok?
+        final titleMatches = game.title.toLowerCase().contains(query);
+
+        // Cek 2: Apakah kategorinya cocok?
+        final categoryMatches =
+            _selectedCategory == null || game.category == _selectedCategory;
+
+        return titleMatches && categoryMatches; // Keduanya harus benar
       }).toList();
     });
   }
+  // -----------------------------
 
   @override
   void dispose() {
@@ -54,17 +69,59 @@ class _GamesTabState extends State<GamesTab> {
     super.dispose();
   }
 
+  // --- WIDGET BARU UNTUK CHIPS KATEGORI ---
+  Widget _buildCategoryChips() {
+    return Container(
+      height: 50, // Beri tinggi tetap
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _categories.length + 1, // +1 untuk tombol "Semua"
+        separatorBuilder: (context, index) => SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            // Tombol "Semua"
+            return ChoiceChip(
+              label: Text('Semua'),
+              selected: _selectedCategory == null,
+              onSelected: (selected) {
+                setState(() {
+                  _selectedCategory = null; // Hapus filter
+                  _filterGames(); // Jalankan ulang filter
+                });
+              },
+            );
+          }
+
+          final category = _categories[index - 1];
+          return ChoiceChip(
+            label: Text(category),
+            selected: _selectedCategory == category,
+            onSelected: (selected) {
+              setState(() {
+                if (selected) {
+                  _selectedCategory = category;
+                }
+                _filterGames(); // Jalankan ulang filter
+              });
+            },
+          );
+        },
+      ),
+    );
+  }
+  // -------------------------------------
+
   @override
   Widget build(BuildContext context) {
-    // Tampilan utama dengan Search Bar
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
+          // --- KOTAK PENCARIAN ---
           TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              labelText: 'Cari Game...',
+              labelText: 'Cari Game ...',
               prefixIcon: Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.0),
@@ -73,9 +130,14 @@ class _GamesTabState extends State<GamesTab> {
           ),
           SizedBox(height: 10),
 
-          // --- GANTI UI LISTVIEW ---
+          // --- TAMBAHKAN UI CHIPS KATEGORI ---
+          _buildCategoryChips(),
+          SizedBox(height: 5),
+          Divider(),
+          // -----------------------------------
+
+          // --- DAFTAR GAME (ListView) ---
           Expanded(
-            // Tampilkan loading HANYA jika _allGames belum diload
             child: _allGames.isEmpty
                 ? Center(
                     child: Text(
@@ -89,10 +151,8 @@ class _GamesTabState extends State<GamesTab> {
                     itemBuilder: (context, index) {
                       final game = _filteredGames[index];
                       return Card(
-                        // <-- Gunakan Card agar lebih rapi
                         margin: const EdgeInsets.symmetric(vertical: 4.0),
                         child: ListTile(
-                          // Tampilkan gambar thumbnail dari API
                           leading: game.thumb != null
                               ? Image.network(
                                   game.thumb!,
@@ -100,18 +160,16 @@ class _GamesTabState extends State<GamesTab> {
                                   height: 50,
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
-                                    return Icon(Icons.gamepad); // Fallback
+                                    return Icon(Icons.gamepad);
                                   },
                                 )
                               : Icon(Icons.gamepad),
 
-                          // Ganti 'name' jadi 'title'
                           title: Text(game.title),
 
-                          // Tampilkan harga diskon
                           subtitle: Text(
-                            // Format harga diskon
-                            "Harga Diskon: ${_priceFormat.format(game.salePrice)}",
+                            // Tampilkan harga DAN kategori baru kita
+                            "${_priceFormat.format(game.salePrice)}  -  (${game.category})",
                             style: TextStyle(color: Colors.greenAccent),
                           ),
                           onTap: () {
@@ -121,8 +179,6 @@ class _GamesTabState extends State<GamesTab> {
                                 builder: (context) =>
                                     GameDetailScreen(game: game),
                               ),
-                              // 'then' akan dipanggil saat kita kembali dari DetailScreen
-                              // Ini untuk me-refresh status wishlist
                             ).then((_) => _loadGames());
                           },
                         ),

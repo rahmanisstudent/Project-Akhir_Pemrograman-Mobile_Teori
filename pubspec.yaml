@@ -54,6 +54,8 @@ dependencies:
   #formatting tanggal, waktu, dan mata uang
   intl: ^0.20.2 
 
+  #Google Maps Flutter
+
   #untuk apalah dipake pokoknya
   path_provider: ^2.1.5
 

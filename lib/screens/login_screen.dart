@@ -46,16 +46,29 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: _usernameController,
               decoration: InputDecoration(labelText: 'Username'),
             ),
+
+            SizedBox(height: 16),
+
             TextField(
               controller: _passwordController,
               obscureText: true, // Sembunyikan password
               decoration: InputDecoration(labelText: 'Password'),
             ),
+
             SizedBox(height: 20),
+
             ElevatedButton(
               onPressed: _login, // Panggil fungsi _login
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 70,
+                  vertical: 15,
+                ),
+                textStyle: TextStyle(fontSize: 16),
+              ),
               child: Text('Login'),
             ),
+
             TextButton(
               onPressed: () {
                 // Pindah ke RegisterScreen
