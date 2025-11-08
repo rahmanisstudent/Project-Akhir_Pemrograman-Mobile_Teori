@@ -160,7 +160,9 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
           IconButton(
             icon: Icon(
               _isInWishlist ? Icons.favorite : Icons.favorite_border,
-              color: _isInWishlist ? Colors.red : Colors.white,
+              color: _isInWishlist
+                  ? Colors.red
+                  : const Color.fromARGB(189, 62, 55, 55),
             ),
             onPressed: _toggleWishlist,
           ),
