@@ -23,7 +23,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
   @override
   void initState() {
     super.initState();
-    // Inisialisasi _dataFuture dengan Future kosong
     _dataFuture = Future.value([]);
     _loadData();
   }
@@ -33,32 +32,25 @@ class _WishlistScreenState extends State<WishlistScreen> {
     if (userId != null) {
       setState(() {
         _dataFuture = Future.wait([
-          _dbHelper.getMyWishlist(
-            userId,
-          ), // Memanggil fungsi DB yang sudah benar
-          _apiService.getRates(), // Memanggil API Kurs
+          _dbHelper.getMyWishlist(userId),
+          _apiService.getRates(),
         ]);
       });
     }
   }
 
-  // --- 3. PERBAIKI FUNGSI KALKULASI TOTAL ---
-  // Logika ini jadi jauh lebih sederhana karena semua harga game sekarang dalam USD
   double _calculateTotal(List<Game> games, Map<String, dynamic>? rates) {
-    // Cek jika API kurs gagal atau tidak ada data IDR
     if (rates == null || !rates.containsKey('IDR')) return 0.0;
 
     double totalIdr = 0.0;
     double idrRate = rates['IDR'].toDouble();
 
     for (var game in games) {
-      // Kita jumlahkan HARGA DISKON (salePrice) untuk total wishlist
       totalIdr += game.salePrice * idrRate;
     }
     return totalIdr;
   }
 
-  // (Fungsi format total ini sudah benar, tidak perlu diubah)
   String _formatTotal(double total) {
     final format = NumberFormat.currency(
       locale: 'id_ID',
@@ -94,7 +86,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
           return Column(
             children: [
-              // --- KARTU TOTAL (Sudah Benar) ---
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
@@ -104,7 +95,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   borderRadius: BorderRadius.circular(12.0),
                 ),
                 child: Column(
-                  // ... (UI Total Cost tidak berubah) ...
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -122,15 +112,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
                   ],
                 ),
               ),
-
-              // --- 4. PERBAIKI LISTVIEW ---
               Expanded(
                 child: ListView.builder(
                   itemCount: wishlistGames.length,
                   itemBuilder: (context, index) {
                     final game = wishlistGames[index];
                     return ListTile(
-                      // Gunakan 'thumb'
                       leading: game.thumb != null
                           ? Image.network(
                               game.thumb!,
@@ -141,9 +128,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                                   Icon(Icons.gamepad),
                             )
                           : Icon(Icons.gamepad),
-                      // Gunakan 'title'
                       title: Text(game.title),
-                      // Tampilkan harga diskon individu
                       subtitle: Text(
                         "Diskon: Rp ${_formatTotal(game.salePrice * (rates?['IDR'] ?? 0.0))}",
                         style: TextStyle(color: Colors.greenAccent),
@@ -154,7 +139,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
                           MaterialPageRoute(
                             builder: (context) => GameDetailScreen(game: game),
                           ),
-                          // Refresh halaman ini saat kita kembali
                         ).then((_) => _loadData());
                       },
                     );

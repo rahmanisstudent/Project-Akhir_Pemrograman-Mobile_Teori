@@ -27,7 +27,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'PixelNomics',
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       home: _buildHomeScreen(),
     );
   }

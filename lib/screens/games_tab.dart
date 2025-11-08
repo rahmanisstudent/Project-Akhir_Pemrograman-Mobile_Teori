@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/game_model.dart';
 import '../utils/database_helper.dart';
+import '../utils/app_theme.dart';
 import 'game_detail_screen.dart';
 
 class GamesTab extends StatefulWidget {
@@ -19,14 +20,12 @@ class _GamesTabState extends State<GamesTab> {
 
   final TextEditingController _searchController = TextEditingController();
 
-  // --- STATE BARU UNTUK FILTER ---
   final List<String> _categories = [
     'Full Game',
     'DLC / Expansion',
     'In-Game Currency',
   ];
-  String? _selectedCategory; // Kategori yang sedang dipilih
-  // ------------------------------
+  String? _selectedCategory;
 
   final _priceFormat = NumberFormat.currency(locale: 'en_US', symbol: "\$");
 
@@ -45,23 +44,17 @@ class _GamesTabState extends State<GamesTab> {
     });
   }
 
-  // --- PERBARUI FUNGSI FILTER ---
   void _filterGames() {
     String query = _searchController.text.toLowerCase();
     setState(() {
       _filteredGames = _allGames.where((game) {
-        // Cek 1: Apakah judulnya cocok?
         final titleMatches = game.title.toLowerCase().contains(query);
-
-        // Cek 2: Apakah kategorinya cocok?
         final categoryMatches =
             _selectedCategory == null || game.category == _selectedCategory;
-
-        return titleMatches && categoryMatches; // Keduanya harus benar
+        return titleMatches && categoryMatches;
       }).toList();
     });
   }
-  // -----------------------------
 
   @override
   void dispose() {
@@ -69,39 +62,60 @@ class _GamesTabState extends State<GamesTab> {
     super.dispose();
   }
 
-  // --- WIDGET BARU UNTUK CHIPS KATEGORI ---
   Widget _buildCategoryChips() {
     return Container(
-      height: 50, // Beri tinggi tetap
+      height: 50,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _categories.length + 1, // +1 untuk tombol "Semua"
+        padding: EdgeInsets.symmetric(horizontal: 4),
+        itemCount: _categories.length + 1,
         separatorBuilder: (context, index) => SizedBox(width: 8),
         itemBuilder: (context, index) {
           if (index == 0) {
-            // Tombol "Semua"
             return ChoiceChip(
-              label: Text('Semua'),
+              label: Text('🎮 Semua'),
               selected: _selectedCategory == null,
+              selectedColor: kPrimaryColor,
+              backgroundColor: Colors.grey[100],
+              labelStyle: TextStyle(
+                color: _selectedCategory == null
+                    ? Colors.white
+                    : kTextPrimaryColor,
+                fontWeight: FontWeight.w600,
+              ),
               onSelected: (selected) {
                 setState(() {
-                  _selectedCategory = null; // Hapus filter
-                  _filterGames(); // Jalankan ulang filter
+                  _selectedCategory = null;
+                  _filterGames();
                 });
               },
             );
           }
 
           final category = _categories[index - 1];
+          String emoji = index == 1
+              ? '🎯'
+              : index == 2
+              ? '🎁'
+              : '💰';
+
           return ChoiceChip(
-            label: Text(category),
+            label: Text('$emoji $category'),
             selected: _selectedCategory == category,
+            selectedColor: kPrimaryColor,
+            backgroundColor: Colors.grey[100],
+            labelStyle: TextStyle(
+              color: _selectedCategory == category
+                  ? Colors.white
+                  : kTextPrimaryColor,
+              fontWeight: FontWeight.w600,
+            ),
             onSelected: (selected) {
               setState(() {
                 if (selected) {
                   _selectedCategory = category;
                 }
-                _filterGames(); // Jalankan ulang filter
+                _filterGames();
               });
             },
           );
@@ -109,69 +123,112 @@ class _GamesTabState extends State<GamesTab> {
       ),
     );
   }
-  // -------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
+    return Container(
+      color: kBackgroundColor,
       child: Column(
         children: [
-          // --- KOTAK PENCARIAN ---
-          TextField(
-            controller: _searchController,
-            decoration: InputDecoration(
-              labelText: 'Cari Game ...',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
-              ),
+          // Header Card dengan Search
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '🎮 Jelajahi Game Deals',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: kTextPrimaryColor,
+                  ),
+                ),
+                SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cari game favoritmu...',
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: kPrimaryColor,
+                    ),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, color: kTextSecondaryColor),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 14,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 12),
+                _buildCategoryChips(),
+              ],
             ),
           ),
-          SizedBox(height: 10),
-
-          // --- TAMBAHKAN UI CHIPS KATEGORI ---
-          _buildCategoryChips(),
-          SizedBox(height: 5),
-          Divider(),
-          // -----------------------------------
-
-          // --- DAFTAR GAME (ListView) ---
+          Divider(height: 1),
+          // Game List
           Expanded(
             child: _allGames.isEmpty
                 ? Center(
-                    child: Text(
-                      'Database kosong. Jalankan "Sync" di tab profil (jika admin).',
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.videogame_asset_off,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Database kosong',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: kTextSecondaryColor),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Jalankan "Sync" di tab profil',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ],
                     ),
                   )
                 : _filteredGames.isEmpty
-                ? Center(child: Text('Game tidak ditemukan.'))
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Game tidak ditemukan',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: kTextSecondaryColor),
+                        ),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     itemCount: _filteredGames.length,
                     itemBuilder: (context, index) {
                       final game = _filteredGames[index];
                       return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: ListTile(
-                          leading: game.thumb != null
-                              ? Image.network(
-                                  game.thumb!,
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Icon(Icons.gamepad);
-                                  },
-                                )
-                              : Icon(Icons.gamepad),
-
-                          title: Text(game.title),
-
-                          subtitle: Text(
-                            // Tampilkan harga DAN kategori baru kita
-                            "${_priceFormat.format(game.salePrice)}  -  (${game.category})",
-                            style: TextStyle(color: Colors.greenAccent),
-                          ),
+                        elevation: 2,
+                        margin: EdgeInsets.symmetric(vertical: 6),
+                        child: InkWell(
                           onTap: () {
                             Navigator.push(
                               context,
@@ -181,6 +238,123 @@ class _GamesTabState extends State<GamesTab> {
                               ),
                             ).then((_) => _loadGames());
                           },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Game Thumbnail
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: game.thumb != null
+                                      ? Image.network(
+                                          game.thumb!,
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                return Container(
+                                                  width: 80,
+                                                  height: 80,
+                                                  color: Colors.grey[200],
+                                                  child: Icon(
+                                                    Icons.gamepad,
+                                                    color: kPrimaryColor,
+                                                    size: 32,
+                                                  ),
+                                                );
+                                              },
+                                        )
+                                      : Container(
+                                          width: 80,
+                                          height: 80,
+                                          color: Colors.grey[200],
+                                          child: Icon(
+                                            Icons.gamepad,
+                                            color: kPrimaryColor,
+                                            size: 32,
+                                          ),
+                                        ),
+                                ),
+                                SizedBox(width: 12),
+                                // Game Info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        game.title,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              color: kTextPrimaryColor,
+                                            ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      SizedBox(height: 6),
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: kPrimaryColor.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          game.category,
+                                          style: TextStyle(
+                                            color: kPrimaryColor,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            _priceFormat.format(game.salePrice),
+                                            style: TextStyle(
+                                              color: kSuccessColor,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          if (game.normalPrice > game.salePrice)
+                                            Text(
+                                              _priceFormat.format(
+                                                game.normalPrice,
+                                              ),
+                                              style: TextStyle(
+                                                color: kTextSecondaryColor,
+                                                fontSize: 14,
+                                                decoration:
+                                                    TextDecoration.lineThrough,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: kTextSecondaryColor,
+                                  size: 18,
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       );
                     },

@@ -1,132 +1,195 @@
 import 'package:flutter/material.dart';
 
-// Ini adalah skema warna "Cyberpunk / Gamer" yang kita pilih
-// Aksen utama: Teal/Aqua
-// Latar belakang: Sangat gelap
-const Color kPrimaryColor = Color(0xFF00BFFF); // DeepSkyBlue / Aksen cerah
-const Color kAccentColor = Color(0xFF00E5FF); // Aqua / Neon
-const Color kBackgroundColor = Color(
-  0xFF121212,
-); // Latar belakang gelap (bukan hitam pekat)
-const Color kCardColor = Color(
-  0xFF1E1E1E,
-); // Warna kartu (sedikit lebih terang)
-const Color kSuccessColor = Colors.greenAccent; // Untuk harga diskon
-const Color kErrorColor = Colors.pinkAccent; // Untuk error / wishlist
+// Modern Light Theme Color Palette
+const Color kPrimaryColor = Color(0xFF2196F3); // Modern Blue
+const Color kSecondaryColor = Color(0xFFFF9800); // Energetic Orange
+const Color kAccentColor = Color(0xFF4CAF50); // Success Green
+const Color kBackgroundColor = Color(0xFFF5F7FA); // Light Gray Background
+const Color kCardColor = Color(0xFFFFFFFF); // Pure White Cards
+const Color kSuccessColor = Color(0xFF4CAF50); // Green for discounts
+const Color kErrorColor = Color(0xFFE91E63); // Pink for wishlist/errors
+const Color kTextPrimaryColor = Color(0xFF2C3E50); // Dark text
+const Color kTextSecondaryColor = Color(0xFF7F8C8D); // Gray text
 
 class AppTheme {
-  static ThemeData get darkTheme {
+  static ThemeData get lightTheme {
     return ThemeData(
-      // === Warna Utama ===
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       primaryColor: kPrimaryColor,
       scaffoldBackgroundColor: kBackgroundColor,
       cardColor: kCardColor,
 
-      // Definisikan ColorScheme untuk konsistensi
-      colorScheme: ColorScheme.dark(
+      colorScheme: ColorScheme.light(
         primary: kPrimaryColor,
-        secondary: kAccentColor,
+        secondary: kSecondaryColor,
         background: kBackgroundColor,
-        surface: kCardColor, // Warna Card, Dialog, BottomSheet
-        onPrimary: Colors.black, // Teks di atas Primary
-        onSecondary: Colors.black, // Teks di atas Secondary
-        onBackground: Colors.white, // Teks di atas Background
-        onSurface: Colors.white, // Teks di atas Card/Surface
+        surface: kCardColor,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onBackground: kTextPrimaryColor,
+        onSurface: kTextPrimaryColor,
         error: kErrorColor,
-        onError: Colors.black,
-        brightness: Brightness.dark,
-        surfaceVariant: kCardColor, // Atur surfaceVariant ke kCardColor
-        onSurfaceVariant: Colors.white, // Atur onSurfaceVariant ke white
+        onError: Colors.white,
+        surfaceVariant: Colors.grey[100]!,
+        onSurfaceVariant: kTextSecondaryColor,
       ),
 
-      // === Tema AppBar ===
+      // AppBar Theme
       appBarTheme: AppBarTheme(
-        color: kCardColor, // AppBar pakai warna kartu (bukan hitam)
-        elevation: 2,
+        backgroundColor: kCardColor,
+        foregroundColor: kPrimaryColor,
+        elevation: 0,
+        centerTitle: true,
         titleTextStyle: TextStyle(
-          color: kPrimaryColor, // Judul AppBar pakai warna aksen
+          color: kTextPrimaryColor,
           fontSize: 20,
           fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
         ),
-        iconTheme: IconThemeData(
-          color: kPrimaryColor, // Tombol back, dll.
-        ),
+        iconTheme: IconThemeData(color: kPrimaryColor),
+        shadowColor: Colors.black12,
       ),
 
-      // === Tema Tombol ===
+      // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: kPrimaryColor, // Latar tombol
-          foregroundColor: Colors.black, // Teks tombol
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          backgroundColor: kPrimaryColor,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.0),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
           ),
         ),
       ),
 
-      // === Tema Bottom Navigation Bar ===
+      // Bottom Navigation Bar Theme
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: kCardColor,
-        selectedItemColor: kAccentColor, // Ikon yang aktif
-        unselectedItemColor: Colors.grey[600], // Ikon yang tidak aktif
-        showUnselectedLabels: false,
+        selectedItemColor: kPrimaryColor,
+        unselectedItemColor: kTextSecondaryColor,
+        selectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 12,
+        ),
+        type: BottomNavigationBarType.fixed,
+        elevation: 8,
+        showUnselectedLabels: true,
       ),
 
-      // === Tema Input Field (Search, Komen) ===
+      // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.black.withOpacity(0.3), // Latar field lebih gelap
+        fillColor: Colors.grey[50],
+        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide.none, // Hilangkan border
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!, width: 1.5),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!, width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12.0),
-          borderSide: BorderSide(
-            color: kAccentColor,
-            width: 2,
-          ), // Border neon saat aktif
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: kPrimaryColor, width: 2),
         ),
-        labelStyle: TextStyle(color: Colors.grey[400]),
-        hintStyle: TextStyle(color: Colors.grey[600]),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: kErrorColor, width: 1.5),
+        ),
+        labelStyle: TextStyle(color: kTextSecondaryColor, fontSize: 14),
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
       ),
 
-      // === Tema Card (di GamesTab) ===
+      // Card Theme
       cardTheme: CardThemeData(
-        elevation: 2,
+        elevation: 3,
         color: kCardColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.0),
-        ),
+        shadowColor: Colors.black12,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       ),
 
-      // === Tema Chip (Filter) ===
+      // Chip Theme
       chipTheme: ChipThemeData(
-        backgroundColor: Colors.grey[800],
-        selectedColor: kAccentColor,
-        labelStyle: TextStyle(color: Colors.white),
-        secondaryLabelStyle: TextStyle(
-          color: Colors.black,
-        ), // Teks saat chip dipilih
-        padding: const EdgeInsets.all(8.0),
-      ),
-
-      // === Tema Text (Font) ===
-      textTheme: TextTheme(
-        headlineMedium: TextStyle(
-          color: kPrimaryColor,
-          fontWeight: FontWeight.bold,
+        backgroundColor: Colors.grey[100]!,
+        selectedColor: kPrimaryColor.withOpacity(0.2),
+        labelStyle: TextStyle(
+          color: kTextPrimaryColor,
+          fontWeight: FontWeight.w500,
         ),
-        headlineSmall: TextStyle(color: kPrimaryColor),
-        titleMedium: TextStyle(color: Colors.white.withOpacity(0.8)),
-        bodyLarge: TextStyle(color: Colors.white),
-        bodyMedium: TextStyle(color: Colors.white.withOpacity(0.7)),
+        secondaryLabelStyle: TextStyle(
+          color: kPrimaryColor,
+          fontWeight: FontWeight.w600,
+        ),
+        side: BorderSide(color: Colors.grey[300]!, width: 1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
 
-      // Atur warna aksen harga diskon
-      textSelectionTheme: TextSelectionThemeData(cursorColor: kAccentColor),
+      // Text Theme
+      textTheme: TextTheme(
+        headlineLarge: TextStyle(
+          color: kTextPrimaryColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 32,
+        ),
+        headlineMedium: TextStyle(
+          color: kTextPrimaryColor,
+          fontWeight: FontWeight.bold,
+          fontSize: 24,
+        ),
+        headlineSmall: TextStyle(
+          color: kTextPrimaryColor,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+        ),
+        titleLarge: TextStyle(
+          color: kTextPrimaryColor,
+          fontWeight: FontWeight.w600,
+          fontSize: 18,
+        ),
+        titleMedium: TextStyle(
+          color: kTextPrimaryColor,
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
+        ),
+        bodyLarge: TextStyle(color: kTextPrimaryColor, fontSize: 16),
+        bodyMedium: TextStyle(color: kTextSecondaryColor, fontSize: 14),
+        bodySmall: TextStyle(color: kTextSecondaryColor, fontSize: 12),
+      ),
+
+      // Floating Action Button Theme
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: kPrimaryColor,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+
+      // Dialog Theme
+      dialogTheme: DialogThemeData(
+        backgroundColor: kCardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 8,
+      ),
+
+      // Divider Theme
+      dividerTheme: DividerThemeData(
+        color: Colors.grey[300],
+        thickness: 1,
+        space: 20,
+      ),
     );
   }
 }

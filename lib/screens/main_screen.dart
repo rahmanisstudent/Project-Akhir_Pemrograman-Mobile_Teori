@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:pixelnomics_stable/screens/login_screen.dart';
 import 'package:pixelnomics_stable/services/auth_service.dart';
 import 'package:pixelnomics_stable/services/notification_service.dart';
@@ -20,6 +22,7 @@ class _MainScreenState extends State<MainScreen> {
 
   static const List<Widget> _widgetOptions = <Widget>[
     GamesTab(),
+    WishlistScreen(),
     VoucherTab(),
     ProfileTab(),
   ];
@@ -33,15 +36,18 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('PixelNomics')),
+      appBar: AppBar(title: Text('PixelNomics'), elevation: 1),
       body: _widgetOptions.elementAt(_selectedIndex),
-
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.gamepad), label: 'Games'),
           BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: 'Wishlist',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.location_on),
-            label: 'Cari Voucher',
+            label: 'Voucher',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
@@ -52,7 +58,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// --- Widget untuk Tab Profil ---
 class ProfileTab extends StatefulWidget {
   const ProfileTab({Key? key}) : super(key: key);
 
@@ -61,36 +66,34 @@ class ProfileTab extends StatefulWidget {
 }
 
 class _ProfileTabState extends State<ProfileTab> {
-  // Service yang kita butuhkan
   final AuthService _authService = AuthService();
   final ApiService _apiService = ApiService();
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
-  // State untuk data
   late Future<Map<String, dynamic>?> _userDataFuture;
   bool _isSyncing = false;
-  int? _currentUserId; // Simpan User ID
+  int? _currentUserId;
+
+  Uint8List _base64ToImage(String base64String) {
+    String cleanBase64 = base64String.split(',').last;
+    return base64Decode(cleanBase64);
+  }
 
   @override
   void initState() {
     super.initState();
-    // Panggil data saat tab pertama kali dibuka
     _loadUserData();
   }
 
-  // Fungsi baru untuk mengambil data user dari DB v5
   void _loadUserData() async {
-    // 1. Ambil ID dari session
     _currentUserId = await _authService.getUserId();
     if (_currentUserId != null) {
-      // 2. Set Future untuk mengambil data lengkap dari DB
       setState(() {
         _userDataFuture = _dbHelper.getUserData(_currentUserId!);
       });
     }
   }
 
-  // Fungsi untuk Sync data (sama seperti sebelumnya)
   void _syncData() async {
     setState(() {
       _isSyncing = true;
@@ -103,15 +106,36 @@ class _ProfileTabState extends State<ProfileTab> {
         scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text('Sinkronisasi ${games.length} game berhasil!'),
+            backgroundColor: kSuccessColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       } else {
         scaffoldMessenger.showSnackBar(
-          SnackBar(content: Text('Gagal mengambil data dari API.')),
+          SnackBar(
+            content: Text('Gagal mengambil data dari API.'),
+            backgroundColor: kErrorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
         );
       }
     } catch (e) {
-      scaffoldMessenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: kErrorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
     }
     setState(() {
       _isSyncing = false;
@@ -120,114 +144,166 @@ class _ProfileTabState extends State<ProfileTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Gunakan FutureBuilder untuk menunggu data user
     return FutureBuilder<Map<String, dynamic>?>(
       future: _userDataFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return Center(child: CircularProgressIndicator(color: kPrimaryColor));
         }
         if (snapshot.hasError || !snapshot.hasData) {
-          return Center(child: Text('Gagal memuat data profil.'));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: kErrorColor),
+                SizedBox(height: 16),
+                Text(
+                  'Gagal memuat data profil.',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+          );
         }
 
-        // --- Data user sudah siap ---
         final userData = snapshot.data!;
         final String role =
             userData[DatabaseHelper.tableUsersColRole] ?? 'user';
         final String username =
             userData[DatabaseHelper.tableUsersColUsername] ?? 'Tamu';
-        // Gunakan nama lengkap, fallback ke username
         final String displayName =
             userData[DatabaseHelper.tableUsersColFullName] ?? username;
         final String? picturePath =
             userData[DatabaseHelper.tableUsersColPicturePath];
 
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          // Gunakan ListView agar bisa di-scroll
-          child: ListView(
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
             children: [
-              // --- 1. TAMPILKAN GAMBAR PROFIL ---
-              Center(
-                // CircleAvatar untuk gambar profil
+              SizedBox(height: 20),
+              // Profile Picture with Shadow
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: kPrimaryColor.withOpacity(0.3),
+                      blurRadius: 20,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
                 child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.grey[700],
-                  // Tampilkan gambar dari network (jika ada),
-                  // jika tidak, tampilkan inisial nama
+                  radius: 60,
+                  backgroundColor: kPrimaryColor.withOpacity(0.1),
                   backgroundImage:
                       (picturePath != null && picturePath.isNotEmpty)
-                      ? NetworkImage(picturePath)
+                      ? (picturePath.startsWith('data:image')
+                            ? MemoryImage(_base64ToImage(picturePath))
+                            : NetworkImage(picturePath) as ImageProvider)
                       : null,
                   child: (picturePath == null || picturePath.isEmpty)
                       ? Text(
                           displayName.isNotEmpty
                               ? displayName[0].toUpperCase()
                               : '?',
-                          style: TextStyle(fontSize: 40, color: Colors.white),
+                          style: TextStyle(
+                            fontSize: 48,
+                            color: kPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                         )
                       : null,
                 ),
               ),
-              SizedBox(height: 10),
-
-              // --- 2. TAMPILKAN NAMA LENGKAP ---
-              Text(
-                'Selamat Datang, $displayName!',
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
+              SizedBox(height: 20),
+              // Name Card
+              Card(
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        displayName,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: kTextPrimaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: role == 'admin'
+                              ? kSecondaryColor.withOpacity(0.2)
+                              : kPrimaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          role == 'admin' ? '👑 Admin' : '👤 User',
+                          style: TextStyle(
+                            color: role == 'admin'
+                                ? kSecondaryColor
+                                : kPrimaryColor,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               SizedBox(height: 30),
-
-              // --- 3. TOMBOL EDIT PROFIL ---
-              ElevatedButton.icon(
-                icon: Icon(Icons.edit),
-                label: Text('Edit Profil'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                ),
+              // Action Buttons
+              _buildActionButton(
+                context,
+                icon: Icons.edit_rounded,
+                label: 'Edit Profil',
+                color: kPrimaryColor,
                 onPressed: () {
-                  // Pindah ke layar EditProfileScreen
-                  // Kita gunakan .then() agar profil otomatis refresh
-                  // saat kita kembali dari halaman edit
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => EditProfileScreen(),
                     ),
                   ).then((_) {
-                    // Muat ulang data user setelah kembali
                     _loadUserData();
                   });
                 },
               ),
-              SizedBox(height: 10),
-
-              // --- 4. TOMBOL WISHLIST (sudah ada) ---
-              ElevatedButton.icon(
-                icon: Icon(Icons.favorite),
-                label: Text('Lihat Wishlist Saya'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.onError,
-                  foregroundColor: Theme.of(context).colorScheme.error,
-                ),
+              SizedBox(height: 12),
+              _buildActionButton(
+                context,
+                icon: Icons.notifications_rounded,
+                label: 'Tes Notifikasi',
+                color: kSecondaryColor,
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => WishlistScreen()),
+                  NotificationService().showTestNotification();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Notifikasi dikirim!'),
+                      backgroundColor: kSuccessColor,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                   );
                 },
               ),
-              SizedBox(height: 10),
-
-              // 6. Tombol Logout
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kCardColor,
-                  foregroundColor: kErrorColor,
-                  side: BorderSide(color: kErrorColor),
-                ),
+              SizedBox(height: 12),
+              _buildActionButton(
+                context,
+                icon: Icons.logout_rounded,
+                label: 'Logout',
+                color: kErrorColor,
                 onPressed: () async {
                   await _authService.logout();
                   Navigator.pushAndRemoveUntil(
@@ -236,36 +312,59 @@ class _ProfileTabState extends State<ProfileTab> {
                     (route) => false,
                   );
                 },
-                child: Text('Logout'),
               ),
-              SizedBox(height: 20),
-
-              // 7. Tombol Tes Notifikasi
-              ElevatedButton(
-                onPressed: () {
-                  NotificationService().showTestNotification();
-                },
-                child: Text('Tes Notifikasi (Demo)'),
-              ),
-
-              // 8. Tombol Admin Sync
-              Visibility(
-                visible: role == 'admin', // Tampil hanya jika admin
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 20.0),
-                  child: ElevatedButton.icon(
-                    icon: Icon(Icons.sync),
-                    label: _isSyncing
-                        ? Text('Sinkronisasi...')
-                        : Text('Sync Data Game (Admin)'),
-                    onPressed: _isSyncing ? null : _syncData,
+              // Admin Section
+              if (role == 'admin') ...[
+                SizedBox(height: 30),
+                Divider(),
+                SizedBox(height: 20),
+                Text(
+                  '⚙️ Admin Controls',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: kSecondaryColor,
                   ),
                 ),
-              ),
+                SizedBox(height: 16),
+                _buildActionButton(
+                  context,
+                  icon: _isSyncing ? Icons.sync_disabled : Icons.sync_rounded,
+                  label: _isSyncing ? 'Sinkronisasi...' : 'Sync Data Game',
+                  color: kSuccessColor,
+                  onPressed: _isSyncing ? null : _syncData,
+                ),
+              ],
+              SizedBox(height: 40),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildActionButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required Color color,
+    VoidCallback? onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: Icon(icon, size: 22),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 16),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        onPressed: onPressed,
+      ),
     );
   }
 }

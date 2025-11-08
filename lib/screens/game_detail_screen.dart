@@ -22,7 +22,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   final AuthService _authService = AuthService();
 
-  // --- PELUANG EFISIENSI: Buat formatter satu kali saja ---
+  // Optimalisasi: Buat formatter satu kali saja sebagai final variable
   final NumberFormat _idrFormat = NumberFormat.currency(
     locale: 'id_ID',
     symbol: "Rp ",
@@ -32,7 +32,6 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
     locale: 'en_US',
     symbol: "\$",
   );
-  // ---------------------------------------------------------
 
   double? _convertedSalePrice;
   double? _convertedNormalPrice;
@@ -78,15 +77,13 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
       return;
     }
 
-    // --- PERBAIKAN BUG KRITIS ---
     String timestamp = DateTime.now().toUtc().toIso8601String();
     await _dbHelper.addComment(
       _currentUserId!,
       widget.game.dealID,
       _commentController.text,
-      timestamp, // <-- TAMBAHKAN TIMESTAMP YANG HILANG
+      timestamp,
     );
-    // ----------------------------
 
     _commentController.clear();
     FocusScope.of(context).unfocus();
@@ -132,7 +129,6 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
     });
   }
 
-  // --- EFISIENSI: Gunakan formatter yang sudah dibuat ---
   String _formatConvertedPrice(double? priceInIdr) {
     if (priceInIdr == null) return "Menghitung...";
     return _idrFormat.format(priceInIdr);
@@ -141,7 +137,6 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   String _formatUsdPrice(double priceInUsd) {
     return _usdFormat.format(priceInUsd);
   }
-  // ---------------------------------------------------
 
   Future<void> _launchDealUrl() async {
     final Uri url = Uri.parse(
@@ -226,9 +221,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                       decoration: TextDecoration.lineThrough,
                     ),
                   ),
-
                   SizedBox(height: 20),
-
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -245,7 +238,6 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                       ),
                     ),
                   ),
-
                   SizedBox(height: 30),
                   Divider(),
                   SizedBox(height: 20),

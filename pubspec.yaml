@@ -61,6 +61,9 @@ dependencies:
   #untuk apalah dipake pokoknya
   path_provider: ^2.1.5
 
+  #image picker
+  image_picker: ^1.1.2
+
   #link redirect
   url_launcher: ^6.3.1
 

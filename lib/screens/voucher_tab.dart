@@ -1,8 +1,8 @@
-// Di file: lib/screens/voucher_tab.dart
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart'; // <-- IMPORT BARU
-import 'package:latlong2/latlong.dart'; // <-- IMPORT BARU
-import 'package:geolocator/geolocator.dart'; // (Ini sudah ada)
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:pixelnomics_stable/utils/app_theme.dart';
 
 class VoucherTab extends StatefulWidget {
   const VoucherTab({Key? key}) : super(key: key);
@@ -15,40 +15,25 @@ class _VoucherTabState extends State<VoucherTab> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // State baru untuk Peta
-  LatLng _mapCenter = LatLng(-6.2088, 106.8456); // Default: Jakarta
+  LatLng _mapCenter = LatLng(-6.2088, 106.8456);
   Position? _currentPosition;
   final MapController _mapController = MapController();
 
-  // Ambil lokasi hardcode dari kodemu sebelumnya
-  final List<Marker> _storeMarkers = [
-    // Indomaret (Lokasi fiksi di Jakarta)
-    Marker(
-      width: 80.0,
-      height: 80.0,
-      point: LatLng(-6.2180, 106.8480),
-      child: Column(
-        children: [
-          Icon(Icons.store, color: Colors.red, size: 30),
-          Text('Indomaret', style: TextStyle(fontSize: 10, color: Colors.red)),
-        ],
-      ),
-    ),
-    // Alfamart (Lokasi fiksi di Bandung)
-    Marker(
-      width: 80.0,
-      height: 80.0,
-      point: LatLng(-6.9175, 107.6191),
-      child: Column(
-        children: [
-          Icon(Icons.store, color: Colors.blue, size: 30),
-          Text('Alfamart', style: TextStyle(fontSize: 10, color: Colors.blue)),
-        ],
-      ),
-    ),
+  final List<Map<String, dynamic>> _stores = [
+    {
+      'name': 'Indomaret Sudirman',
+      'location': LatLng(-6.2180, 106.8480),
+      'color': Colors.red,
+      'icon': Icons.store,
+    },
+    {
+      'name': 'Alfamart Gatsu',
+      'location': LatLng(-6.9175, 107.6191),
+      'color': Colors.blue,
+      'icon': Icons.store,
+    },
   ];
 
-  // Fungsi LBS yang sudah ada
   Future<void> _getCurrentPosition() async {
     setState(() {
       _isLoading = true;
@@ -81,6 +66,17 @@ class _VoucherTabState extends State<VoucherTab> {
         _mapCenter = newCenter;
       });
       _mapController.move(newCenter, 15.0);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('📍 Lokasi ditemukan!'),
+          backgroundColor: kSuccessColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -89,23 +85,137 @@ class _VoucherTabState extends State<VoucherTab> {
     }
   }
 
-  // Fungsi untuk membuat Marker lokasimu
-  Marker _buildUserMarker() {
-    if (_currentPosition == null) {
-      // Jika lokasi belum ada, kembalikan marker kosong
-      return Marker(point: LatLng(0, 0), child: Container());
+  List<Marker> _buildMarkers() {
+    List<Marker> markers = [];
+
+    // Store markers
+    for (var store in _stores) {
+      markers.add(
+        Marker(
+          width: 120.0,
+          height: 100.0,
+          point: store['location'],
+          child: GestureDetector(
+            onTap: () {
+              _showStoreInfo(store['name']);
+            },
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: store['color'],
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: store['color'].withOpacity(0.4),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Icon(store['icon'], color: Colors.white, size: 24),
+                ),
+                SizedBox(height: 4),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black26, blurRadius: 4),
+                    ],
+                  ),
+                  child: Text(
+                    store['name'],
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: kTextPrimaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
-    return Marker(
-      width: 80.0,
-      height: 80.0,
-      point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
-      child: Column(
-        children: [
-          Icon(Icons.my_location, color: Colors.greenAccent, size: 30),
-          Text(
-            'Lokasi Anda',
-            style: TextStyle(fontSize: 10, color: Colors.greenAccent),
+    // User location marker
+    if (_currentPosition != null) {
+      markers.add(
+        Marker(
+          width: 100.0,
+          height: 100.0,
+          point: LatLng(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: kPrimaryColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: kPrimaryColor.withOpacity(0.4),
+                      blurRadius: 12,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.my_location, color: Colors.white, size: 24),
+              ),
+              SizedBox(height: 4),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kPrimaryColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Anda',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return markers;
+  }
+
+  void _showStoreInfo(String storeName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.store, color: kPrimaryColor),
+            SizedBox(width: 8),
+            Expanded(child: Text(storeName, style: TextStyle(fontSize: 18))),
+          ],
+        ),
+        content: Text(
+          'Toko ini menjual voucher game!\n\n'
+          '💳 Tersedia: Steam, PSN, Xbox\n'
+          '💰 Diskon hingga 20%',
+          style: TextStyle(color: kTextSecondaryColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Tutup'),
           ),
         ],
       ),
@@ -114,62 +224,174 @@ class _VoucherTabState extends State<VoucherTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Gabungkan marker toko dan marker user
-    List<Marker> allMarkers = List.from(_storeMarkers)..add(_buildUserMarker());
-
     return Scaffold(
-      // Kita pakai Stack agar tombol bisa "mengambang" di atas peta
       body: Stack(
         children: [
-          // --- WIDGET PETA OSM ---
+          // Map
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(initialCenter: _mapCenter, initialZoom: 13.0),
             children: [
-              // TileLayer adalah "gambar" petanya
               TileLayer(
                 urlTemplate:
                     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                 subdomains: ['a', 'b', 'c'],
               ),
-              // MarkerLayer untuk menampilkan semua pin
-              MarkerLayer(markers: allMarkers),
+              MarkerLayer(markers: _buildMarkers()),
             ],
           ),
 
-          // --- TOMBOL UNTUK MENDAPATKAN LOKASI ---
+          // Header Card
           Positioned(
-            top: 10,
-            left: 10,
-            right: 10,
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.my_location),
-              label: Text('Dapatkan Lokasi Saya'),
-              onPressed: _isLoading ? null : _getCurrentPosition,
-              style: ElevatedButton.styleFrom(
-                // Gunakan tema kita
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            top: 16,
+            left: 16,
+            right: 16,
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: kPrimaryColor, size: 28),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Cari Toko Voucher',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: kTextPrimaryColor,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: _isLoading
+                            ? SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : Icon(Icons.my_location_rounded),
+                        label: Text(
+                          _isLoading ? 'Mencari...' : 'Dapatkan Lokasi Saya',
+                        ),
+                        onPressed: _isLoading ? null : _getCurrentPosition,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
 
-          // --- TAMPILKAN ERROR JIKA ADA ---
+          // Store Legend
+          Positioned(
+            bottom: 80,
+            left: 16,
+            child: Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Legenda',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: kTextPrimaryColor,
+                        fontSize: 12,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    ..._stores.map(
+                      (store) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: store['color'],
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              store['name'],
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: kTextSecondaryColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Error Message
           if (_errorMessage != null)
             Positioned(
-              bottom: 10,
-              left: 10,
-              right: 10,
-              child: Container(
-                padding: const EdgeInsets.all(12.0),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(8.0),
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: Card(
+                elevation: 4,
+                color: kErrorColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                  textAlign: TextAlign.center,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.white),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: Colors.white),
+                        onPressed: () {
+                          setState(() {
+                            _errorMessage = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
