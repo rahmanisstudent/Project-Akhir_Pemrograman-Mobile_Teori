@@ -201,9 +201,13 @@ class DatabaseHelper {
   }
 
   // Fungsi untuk menambah komentar baru
-  Future<int> addComment(int userId, String dealID, String comment) async {
+  Future<int> addComment(
+    int userId,
+    String dealID,
+    String comment,
+    String timestamp,
+  ) async {
     final db = await instance.database;
-    String timestamp = DateTime.now().toUtc().toIso8601String();
     return await db.insert(tableComments, {
       tableCommentsColUserId: userId,
       tableCommentsColGameDealID: dealID,

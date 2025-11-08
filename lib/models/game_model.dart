@@ -1,5 +1,3 @@
-// Di file: lib/models/game_model.dart
-
 class Game {
   // Kita akan gunakan dealID dari API sebagai ID unik
   final String dealID;

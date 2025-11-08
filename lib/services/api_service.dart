@@ -3,12 +3,12 @@ import 'package:http/http.dart' as http;
 import '../models/game_model.dart';
 
 class ApiService {
-  final String _baseUrl =
+  final String _exRatesApiUrl =
       "https://open.er-api.com/v6/latest/USD"; //exchange Rate - API
 
   Future<Map<String, dynamic>?> getRates() async {
     try {
-      final response = await http.get(Uri.parse(_baseUrl));
+      final response = await http.get(Uri.parse(_exRatesApiUrl));
 
       // control statement
       if (response.statusCode == 200) {
@@ -33,7 +33,7 @@ class ApiService {
   }
 
   final String _cheapSharkUrl =
-      "https://www.cheapshark.com/api/1.0/deals?storeID=1&upperPrice=50&pageSize=20";
+      "https://www.cheapshark.com/api/1.0/deals?storeID=1&upperPrice=50&pageSize=50";
   // Keterangan:
   // storeID=1 -> Hanya dari Steam (biar gampang)
   // upperPrice=50 -> Harga di bawah $50

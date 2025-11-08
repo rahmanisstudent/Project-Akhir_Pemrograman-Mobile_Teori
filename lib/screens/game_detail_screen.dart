@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:url_launcher/url_launcher.dart';
+
 import '../models/game_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../utils/database_helper.dart';
-import 'package:timezone/timezone.dart' as tz;
 
 class GameDetailScreen extends StatefulWidget {
-  final Game game; // Model Game baru kita
+  final Game game;
 
   const GameDetailScreen({Key? key, required this.game}) : super(key: key);
 
@@ -20,20 +22,28 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   final AuthService _authService = AuthService();
 
-  // State untuk harga konversi
+  // --- PELUANG EFISIENSI: Buat formatter satu kali saja ---
+  final NumberFormat _idrFormat = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: "Rp ",
+    decimalDigits: 0,
+  );
+  final NumberFormat _usdFormat = NumberFormat.currency(
+    locale: 'en_US',
+    symbol: "\$",
+  );
+  // ---------------------------------------------------------
+
   double? _convertedSalePrice;
   double? _convertedNormalPrice;
   String? _errorMessage;
   Map<String, dynamic>? _rates;
 
-  // State untuk Wishlist
   bool _isInWishlist = false;
   int? _currentUserId;
 
-  // --- STATE BARU UNTUK KOMENTAR ---
   final _commentController = TextEditingController();
   late Future<List<Map<String, dynamic>>> _commentsFuture;
-  // ---------------------------------
 
   @override
   void initState() {
@@ -42,10 +52,8 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
   }
 
   void _loadAllData() async {
-    // 1. Ambil User ID
     _currentUserId = await _authService.getUserId();
 
-    // 2. Cek status wishlist
     if (_currentUserId != null) {
       bool status = await _dbHelper.isGameInWishlist(
         _currentUserId!,
@@ -55,44 +63,35 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
         _isInWishlist = status;
       });
     }
-
-    // 3. Panggil API Kurs Mata Uang
     _fetchRatesAndConvert();
-
-    // 4. PANGGIL KOMENTAR
     _loadComments();
   }
 
-  // --- FUNGSI BARU: Memuat daftar komentar ---
   void _loadComments() {
     setState(() {
       _commentsFuture = _dbHelper.getCommentsForGame(widget.game.dealID);
     });
   }
 
-  // --- FUNGSI BARU: Mengirim komentar ---
   Future<void> _postComment() async {
     if (_commentController.text.isEmpty || _currentUserId == null) {
-      return; // Jangan kirim jika kosong atau user tidak login
+      return;
     }
 
-    // Simpan ke DB
+    // --- PERBAIKAN BUG KRITIS ---
+    String timestamp = DateTime.now().toUtc().toIso8601String();
     await _dbHelper.addComment(
       _currentUserId!,
       widget.game.dealID,
       _commentController.text,
+      timestamp, // <-- TAMBAHKAN TIMESTAMP YANG HILANG
     );
+    // ----------------------------
 
-    // Kosongkan TextField
     _commentController.clear();
-    // Tutup keyboard
     FocusScope.of(context).unfocus();
-    // Muat ulang daftar komentar
     _loadComments();
   }
-
-  // (Fungsi _fetchRatesAndConvert, _toggleWishlist, _formatConvertedPrice, _formatUsdPrice
-  //  TETAP SAMA seperti sebelumnya, tidak ada perubahan)
 
   void _fetchRatesAndConvert() async {
     setState(() {
@@ -133,19 +132,28 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
     });
   }
 
+  // --- EFISIENSI: Gunakan formatter yang sudah dibuat ---
   String _formatConvertedPrice(double? priceInIdr) {
     if (priceInIdr == null) return "Menghitung...";
-    final format = NumberFormat.currency(
-      locale: 'id_ID',
-      symbol: "Rp ",
-      decimalDigits: 0,
-    );
-    return format.format(priceInIdr);
+    return _idrFormat.format(priceInIdr);
   }
 
   String _formatUsdPrice(double priceInUsd) {
-    final format = NumberFormat.currency(locale: 'en_US', symbol: "\$");
-    return format.format(priceInUsd);
+    return _usdFormat.format(priceInUsd);
+  }
+  // ---------------------------------------------------
+
+  Future<void> _launchDealUrl() async {
+    final Uri url = Uri.parse(
+      'https://www.cheapshark.com/redirect?dealID=${widget.game.dealID}',
+    );
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tidak bisa membuka link penawaran.')),
+      );
+    }
   }
 
   @override
@@ -163,17 +171,14 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
           ),
         ],
       ),
-      // --- PERBAIKAN: Gunakan Column, bukan Padding + SingleChildScrollView ---
       body: Column(
         children: [
-          // --- BAGIAN ATAS: Info Game (Bisa di-scroll) ---
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // (Semua widget Image, Text, Divider di sini SAMA)
                   if (widget.game.thumb != null)
                     Image.network(
                       widget.game.thumb!,
@@ -197,7 +202,7 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                     _formatConvertedPrice(_convertedSalePrice),
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.greenAccent,
+                      color: Theme.of(context).colorScheme.secondary,
                     ),
                   ),
                   Text(
@@ -222,32 +227,44 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                     ),
                   ),
 
+                  SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.shopping_cart_checkout),
+                      label: Text('Lihat Penawaran di Toko'),
+                      onPressed: _launchDealUrl,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.secondary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onSecondary,
+                      ),
+                    ),
+                  ),
+
                   SizedBox(height: 30),
                   Divider(),
                   SizedBox(height: 20),
-
-                  // --- BAGIAN BARU: Daftar Komentar ---
                   Text(
                     "Komentar Pengguna",
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   SizedBox(height: 10),
                   _buildCommentList(),
-                  // ---------------------------------
                 ],
               ),
             ),
           ),
-
-          // --- BAGIAN BAWAH: Input Komentar (Tetap di bawah) ---
           _buildCommentInput(),
-          // ----------------------------------------------------
         ],
       ),
     );
   }
 
-  // --- WIDGET BARU: Untuk menampilkan daftar komentar ---
   Widget _buildCommentList() {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _commentsFuture,
@@ -267,12 +284,10 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
 
         final comments = snapshot.data!;
 
-        // Gunakan ListView.builder agar efisien
         return ListView.builder(
           itemCount: comments.length,
-          shrinkWrap: true, // Penting agar muat di dalam SingleChildScrollView
-          physics:
-              NeverScrollableScrollPhysics(), // Biar scroll utamanya yang jalan
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
           itemBuilder: (context, index) {
             final comment = comments[index];
             final String commentText =
@@ -282,28 +297,20 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
             final String? picturePath =
                 comment[DatabaseHelper.tableUsersColPicturePath];
             final String? timestampString =
-                comment[DatabaseHelper
-                    .tableCommentsColTimestamp]; // <-- Ambil timestamp
+                comment[DatabaseHelper.tableCommentsColTimestamp];
 
             final String displayName = (fullName != null && fullName.isNotEmpty)
                 ? fullName
                 : 'User';
 
-            // --- LOGIKA KONVERSI WAKTU ---
-            String formattedTime = ''; // Default string kosong
+            String formattedTime = '';
             if (timestampString != null) {
-              // 1. Parse string dari DB ke DateTime
               final DateTime utcTime = DateTime.parse(timestampString);
+              final tz.Location wib = tz.getLocation('Asia/Jakarta');
+              final tz.Location wita = tz.getLocation('Asia/Makassar');
+              final tz.Location wit = tz.getLocation('Asia/Jayapura');
+              final tz.Location london = tz.getLocation('Europe/London');
 
-              // 2. Tentukan 4 zona waktu
-              final tz.Location wib = tz.getLocation('Asia/Jakarta'); // WIB
-              final tz.Location wita = tz.getLocation('Asia/Makassar'); // WITA
-              final tz.Location wit = tz.getLocation('Asia/Jayapura'); // WIT
-              final tz.Location london = tz.getLocation(
-                'Europe/London',
-              ); // London
-
-              // 3. Konversi
               final String wibTime = DateFormat(
                 'HH:mm',
               ).format(tz.TZDateTime.from(utcTime, wib));
@@ -317,11 +324,9 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                 'HH:mm',
               ).format(tz.TZDateTime.from(utcTime, london));
 
-              // 4. Buat string
               formattedTime =
                   'WIB: $wibTime | WITA: $witaTime | WIT: $witTime | London: $londonTime';
             }
-            // --------------------------------
 
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 4.0),
@@ -340,21 +345,17 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
                   displayName,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-
-                // --- GANTI SUBTITLE-NYA ---
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(commentText), // Isi komentar
+                    Text(commentText),
                     SizedBox(height: 4),
                     Text(
-                      // Timestamp yang sudah dikonversi
                       formattedTime,
                       style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                     ),
                   ],
                 ),
-                // ---------------------------
               ),
             );
           },
@@ -363,12 +364,11 @@ class _GameDetailScreenState extends State<GameDetailScreen> {
     );
   }
 
-  // --- WIDGET BARU: Untuk input komentar ---
   Widget _buildCommentInput() {
     return Container(
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
-        color: Theme.of(context).canvasColor, // Warna latar belakang
+        color: Theme.of(context).cardColor,
         border: Border(top: BorderSide(color: Colors.grey[800]!)),
       ),
       child: Row(
