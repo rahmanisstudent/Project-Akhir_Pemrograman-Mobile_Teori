@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+import 'dart:async';
+import 'dart:math';
 import '../models/game_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -24,12 +27,133 @@ class _WishlistScreenState extends State<WishlistScreen> {
   double _monthlyBudget = 500000.0;
   String _sortBy = 'name';
 
+  // Shake sensor
+  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
+  DateTime? _lastShakeTime;
+  String? _promoCode;
+  bool _isShaking = false;
+
   @override
   void initState() {
     super.initState();
     _dataFuture = Future.value([]);
     _loadBudget();
     _loadData();
+    _initShakeSensor();
+  }
+
+  @override
+  void dispose() {
+    _accelerometerSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initShakeSensor() {
+    _accelerometerSubscription = accelerometerEventStream().listen((event) {
+      double gForce = sqrt(
+        event.x * event.x + event.y * event.y + event.z * event.z,
+      );
+
+      if (gForce > 15.0) {
+        DateTime now = DateTime.now();
+        if (_lastShakeTime == null ||
+            now.difference(_lastShakeTime!).inSeconds > 2) {
+          _lastShakeTime = now;
+          _handleShake();
+        }
+      }
+    });
+  }
+
+  void _handleShake() {
+    if (_isShaking) return;
+
+    setState(() {
+      _isShaking = true;
+    });
+
+    // Generate random promo code
+    final random = Random();
+    final codes = [
+      'PIXEL${random.nextInt(9999)}',
+      'GAME${random.nextInt(9999)}',
+      'DEAL${random.nextInt(9999)}',
+      'SAVE${random.nextInt(9999)}',
+    ];
+
+    _promoCode = codes[random.nextInt(codes.length)];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(Icons.card_giftcard_rounded, color: kSecondaryColor, size: 32),
+            SizedBox(width: 12),
+            Text('🎉 Kode Promo!'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Selamat! Kamu mendapat kode promo:',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: kTextSecondaryColor),
+            ),
+            SizedBox(height: 20),
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: kSecondaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: kSecondaryColor, width: 2),
+              ),
+              child: Text(
+                _promoCode!,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: kSecondaryColor,
+                  letterSpacing: 4,
+                ),
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Diskon 15% untuk pembelian berikutnya!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: kSuccessColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _isShaking = false;
+              });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kSecondaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text('Tutup'),
+          ),
+        ],
+      ),
+    ).then((_) {
+      setState(() {
+        _isShaking = false;
+      });
+    });
   }
 
   Future<void> _loadBudget() async {
@@ -238,7 +362,22 @@ class _WishlistScreenState extends State<WishlistScreen> {
     return Scaffold(
       backgroundColor: kBackgroundColor,
       appBar: AppBar(
-        title: Text('💙 My Wishlist'),
+        title: Row(
+          children: [
+            Text('💙 My Wishlist'),
+            SizedBox(width: 8),
+            Icon(
+              Icons.phonelink_ring_rounded,
+              size: 18,
+              color: kSecondaryColor,
+            ),
+            SizedBox(width: 4),
+            Text(
+              'Shake!',
+              style: TextStyle(fontSize: 12, color: kSecondaryColor),
+            ),
+          ],
+        ),
         elevation: 1,
         actions: [
           IconButton(

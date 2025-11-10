@@ -67,6 +67,9 @@ dependencies:
   #link redirect
   url_launcher: ^6.3.1
 
+  #untuk sensor shake
+  sensors_plus: ^5.0.1
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8

@@ -250,14 +250,14 @@ class _GamesTabState extends State<GamesTab> {
                                   child: game.thumb != null
                                       ? Image.network(
                                           game.thumb!,
-                                          width: 80,
-                                          height: 80,
+                                          width: 100,
+                                          height: 100,
                                           fit: BoxFit.cover,
                                           errorBuilder:
                                               (context, error, stackTrace) {
                                                 return Container(
-                                                  width: 80,
-                                                  height: 80,
+                                                  width: 100,
+                                                  height: 100,
                                                   color: Colors.grey[200],
                                                   child: Icon(
                                                     Icons.gamepad,
@@ -268,8 +268,8 @@ class _GamesTabState extends State<GamesTab> {
                                               },
                                         )
                                       : Container(
-                                          width: 80,
-                                          height: 80,
+                                          width: 100,
+                                          height: 100,
                                           color: Colors.grey[200],
                                           child: Icon(
                                             Icons.gamepad,

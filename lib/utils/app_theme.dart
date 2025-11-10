@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Modern Light Theme Color Palette
+// minta AI buatin color palette wkwk
 const Color kPrimaryColor = Color(0xFF2196F3); // Modern Blue
 const Color kSecondaryColor = Color(0xFFFF9800); // Energetic Orange
 const Color kAccentColor = Color(0xFF4CAF50); // Success Green

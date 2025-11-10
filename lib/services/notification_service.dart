@@ -32,7 +32,7 @@ class NotificationService {
     await androidImplementation?.requestNotificationsPermission();
   }
 
-  // --- 2. Fungsi untuk tes notifikasi (SEKARANG) ---
+  // tes notifikasi di profile
   Future<void> showTestNotification() async {
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
@@ -47,7 +47,6 @@ class NotificationService {
       android: androidDetails,
     );
 
-    // Tampilkan notifikasi
     await _flutterLocalNotificationsPlugin.show(
       0,
       'Tes Notifikasi PixelNomics',
@@ -56,7 +55,7 @@ class NotificationService {
     );
   }
 
-  // --- 3. Fungsi untuk notifikasi harian (SYARAT PROYEK) ---
+  // notifikasi harian
   Future<void> scheduleDailyNotification() async {
     final tz.Location wib = tz.getLocation('Asia/Jakarta');
 

@@ -6,10 +6,8 @@ import 'package:pixelnomics_stable/services/notification_service.dart';
 import 'package:pixelnomics_stable/utils/app_theme.dart';
 
 void main() async {
-  // Pastikan semua binding Flutter siap sebelum menjalankan logika
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inisialisasi NotificationService
   final NotificationService notificationService = NotificationService();
   await notificationService.init();
 
@@ -17,7 +15,6 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  // Buat instance dari AuthService kita
   final AuthService _authService = AuthService();
 
   MyApp({super.key});
@@ -34,7 +31,7 @@ class MyApp extends StatelessWidget {
 
   Widget _buildHomeScreen() {
     return FutureBuilder<bool>(
-      future: _authService.isLoggedIn(), //authservice
+      future: _authService.isLoggedIn(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(

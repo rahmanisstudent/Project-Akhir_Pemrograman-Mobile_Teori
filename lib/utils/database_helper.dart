@@ -182,8 +182,10 @@ class DatabaseHelper {
     return await db.rawQuery(
       '''
     SELECT 
+      c.id as comment_id,
       c.$tableCommentsColComment,
       c.$tableCommentsColTimestamp,
+      c.$tableCommentsColUserId,
       u.$tableUsersColFullName,
       u.$tableUsersColPicturePath
     FROM $tableComments c
@@ -208,6 +210,15 @@ class DatabaseHelper {
       tableCommentsColComment: comment,
       tableCommentsColTimestamp: timestamp,
     });
+  }
+
+  Future<int> deleteComment(int commentId) async {
+    final db = await instance.database;
+    return await db.delete(
+      tableComments,
+      where: 'id = ?',
+      whereArgs: [commentId],
+    );
   }
 
   Future<int> addToWishlist(int userId, String dealID) async {

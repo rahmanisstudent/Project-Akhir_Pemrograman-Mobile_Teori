@@ -1,11 +1,10 @@
 class Game {
-  // Kita akan gunakan dealID dari API sebagai ID unik
   final String dealID;
   final String title;
-  final String? storeID; // ID toko (misal: "1" untuk Steam)
-  final double salePrice; // Harga diskon (sudah dikonversi dari String)
-  final double normalPrice; // Harga normal (sudah dikonversi dari String)
-  final String? thumb; // URL gambar thumbnail
+  final String? storeID;
+  final double salePrice;
+  final double normalPrice;
+  final String? thumb;
 
   Game({
     required this.dealID,
@@ -16,21 +15,17 @@ class Game {
     this.thumb,
   });
 
-  // Fungsi Factory untuk mengubah JSON (dari API) menjadi objek Game
-  // Ini akan meng-handle konversi "29.99" (String) menjadi 29.99 (double)
   factory Game.fromJson(Map<String, dynamic> json) {
     return Game(
       dealID: json['dealID'] ?? 'N/A',
       title: json['title'] ?? 'Unknown Title',
       storeID: json['storeID'],
-      // API mengembalikan harga sebagai String, kita ubah jadi double
       salePrice: double.tryParse(json['salePrice'] ?? '0.0') ?? 0.0,
       normalPrice: double.tryParse(json['normalPrice'] ?? '0.0') ?? 0.0,
       thumb: json['thumb'],
     );
   }
 
-  // Fungsi untuk mengubah Map (dari Database) menjadi objek Game
   factory Game.fromMap(Map<String, dynamic> map) {
     return Game(
       dealID: map['dealID'],
@@ -42,7 +37,6 @@ class Game {
     );
   }
 
-  // Fungsi untuk mengubah objek Game menjadi Map (untuk disimpan ke DB)
   Map<String, dynamic> toMap() {
     return {
       'dealID': dealID,
